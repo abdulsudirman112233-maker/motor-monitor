@@ -157,9 +157,17 @@ void processWebControls() {
                 ("https://maps.google.com/?q=" + String(lat, 6) + "," + String(lng, 6)) : 
                 "Mencari Sinyal GPS";
 
-            String sosMsg = "[SOS DARURAT IOT]\nPermintaan lokasi dari Web Dashboard:\n" + mapsUrl + "\nKecepatan: " + String(gpsManager.getSpeed(), 1) + " km/h\nAki: " + String(readBatteryVoltage(), 1) + "V";
+            String sosMsg = "[SOS DARURAT IOT]\nLokasi: " + mapsUrl + "\nKecepatan: " + String(gpsManager.getSpeed(), 1) + " km/h\nAki: " + String(readBatteryVoltage(), 1) + "V";
             
             bool sent = gsmManager.sendSMS(OWNER_PHONE_NUMBER, sosMsg);
+            if (!sent && String(OWNER_PHONE_NUMBER).startsWith("+62")) {
+                // Fallback jika format +62 ditolak operator: Coba format lokal 08xxx
+                String localNumber = "0" + String(OWNER_PHONE_NUMBER).substring(3);
+                Serial.print(F("[WEB CONTROL] Mencoba fallback format nomor lokal: "));
+                Serial.println(localNumber);
+                sent = gsmManager.sendSMS(localNumber, sosMsg);
+            }
+
             if (sent) {
                 Serial.println(F("[WEB CONTROL] SOS SMS Sukses Terkirim ke No Pemilik."));
                 firebaseClient.pushLogEvent("SOS_SMS_SENT", "SMS darurat sukses terkirim ke pemilik (" OWNER_PHONE_NUMBER ")", lat, lng, gpsManager.getSpeed());
