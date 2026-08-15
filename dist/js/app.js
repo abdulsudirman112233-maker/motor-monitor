@@ -161,8 +161,19 @@ class App {
                 
                 // 1. Listener Telemetri Real-Time dari Perangkat Keras
                 vehicleRef.child('telemetry').on('value', snapshot => {
-                    const data = snapshot.val();
-                    if (data) {
+                    const raw = snapshot.val();
+                    if (!raw) return;
+                    
+                    let data = raw;
+                    // Jika Firebase menyimpan sebagai list push object, ambil item paling terakhir
+                    if (!raw.latitude && typeof raw === 'object') {
+                        const keys = Object.keys(raw);
+                        if (keys.length > 0) {
+                            data = raw[keys[keys.length - 1]];
+                        }
+                    }
+
+                    if (data && data.latitude && data.longitude) {
                         this.telemetry = data;
                         
                         // Perbarui Peta & Speedometer dengan data real
