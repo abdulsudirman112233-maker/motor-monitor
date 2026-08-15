@@ -1,12 +1,12 @@
 {
-  "name": "gps-gsm-vehicle-security-iot",
-  "version": "2.4.0",
-  "description": "Sistem Keamanan & Pelacak Kendaraan Real-Time IoT (NodeMCU ESP8266 + GPS Neo-6M + SIM800L + Web Dashboard)",
+  "name": "motor-monitor",
+  "version": "1.0.0",
+  "description": "Smart IoT Motorcycle Security & Real-Time GPS Tracking Dashboard",
   "main": "dashboard/index.html",
   "scripts": {
     "dev": "npx -y serve dashboard -l 3000",
-    "start": "npx -y serve dashboard -l 3000",
-    "serve": "npx -y serve dashboard -l 3000"
+    "start": "npx -y serve dashboard",
+    "build": "echo 'Build complete'"
   },
   "keywords": [
     "iot",
@@ -14,8 +14,8 @@
     "gps",
     "sim800l",
     "firebase",
-    "vehicle-tracker"
+    "motor-monitor"
   ],
-  "author": "Smart Vehicle IoT",
+  "author": "abdulsudirman112233-maker",
   "license": "MIT"
 }
