@@ -1,21 +1,5 @@
 {
   "name": "motor-monitor",
   "version": "1.0.0",
-  "description": "Smart IoT Motorcycle Security & Real-Time GPS Tracking Dashboard",
-  "main": "dashboard/index.html",
-  "scripts": {
-    "dev": "npx -y serve dashboard -l 3000",
-    "start": "npx -y serve dashboard",
-    "build": "echo 'Build complete'"
-  },
-  "keywords": [
-    "iot",
-    "esp8266",
-    "gps",
-    "sim800l",
-    "firebase",
-    "motor-monitor"
-  ],
-  "author": "abdulsudirman112233-maker",
-  "license": "MIT"
+  "private": true
 }
