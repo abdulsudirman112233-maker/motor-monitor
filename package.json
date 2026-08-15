@@ -1,5 +1,8 @@
 {
   "name": "motor-monitor",
   "version": "1.0.0",
-  "private": true
+  "description": "Smart IoT Motorcycle Security & GPS Tracker",
+  "scripts": {
+    "build": "echo 'Static build ready'"
+  }
 }
