@@ -1,0 +1,90 @@
+================================================================================
+          KONFIGURASI PIN & PANDUAN PENGKABELAN SISTEM KEAMANAN IOT
+       (NodeMCU ESP8266 + GPS Neo-6M + GSM SIM800L + SW-420 + Relay + Buzzer)
+================================================================================
+
+1. TABEL PEMETAAN PIN NODEMCU ESP8266 (ESP-12E)
+--------------------------------------------------------------------------------
+| PIN NODEMCU | GPIO ESP8266 | PERANGKAT EKSTERNAL | FUNGSI / KETERANGAN KABEL |
+|-------------|--------------|---------------------|---------------------------|
+| D5          | GPIO 14      | GPS Neo-6M (TX)     | SoftwareSerial RX (Terima)|
+| D6          | GPIO 12      | GPS Neo-6M (RX)     | SoftwareSerial TX (Kirim) |
+| D1          | GPIO 5       | GSM SIM800L (TXD)   | SoftwareSerial RX (Terima)|
+| D2          | GPIO 4       | GSM SIM800L (RXD)   | SoftwareSerial TX (Kirim) |
+| D7          | GPIO 13      | Sensor SW-420 (DO)  | Digital Input (Interrupt) |
+| D3          | GPIO 0       | Relay Modul (IN)    | Active LOW (Engine Cut-Off)|
+| D0          | GPIO 16      | Buzzer Alarm (SIG)  | Digital Output (Driver)   |
+| A0          | ADC0         | Resistor Divider Aki| Analog In (Tegangan 0-3.3V)|
+| 3V3         | Power 3.3V   | VCC GPS & SW-420    | Output Tegangan 3.3 Volt  |
+| VIN         | Power 5V     | Input DC 5V         | Dari Stepdown LM2596 (5V) |
+| GND         | Ground       | Common Ground       | Disambung ke SEMUA Ground |
+--------------------------------------------------------------------------------
+
+
+2. SKEMA SAMBUNGAN KABEL PER MODUL
+--------------------------------------------------------------------------------
+
+A. MODUL GPS NEO-6M
+   - VCC   ---> Pin 3V3 atau 5V NodeMCU
+   - GND   ---> Pin GND NodeMCU
+   - TX    ---> Pin D5 (GPIO14) NodeMCU  [Data koordinat GPS masuk ke ESP]
+   - RX    ---> Pin D6 (GPIO12) NodeMCU  [Opsional / konfigurasi GPS]
+
+B. MODUL GSM / GPRS SIM800L
+   - VCC   ---> Output Stepdown LM2596 Kedua (Diatur ke 3.8V - 4.0V)
+                *PENTING: Jangan sambung ke 3V3 / 5V NodeMCU (Arus tidak cukup)*
+   - GND   ---> Pin GND Stepdown & GND NodeMCU (Common Ground)
+   - TXD   ---> Pin D1 (GPIO5) NodeMCU   [Data respon AT command & SMS]
+   - RXD   ---> Pin D2 (GPIO4) NodeMCU   [Kirim AT command & perintah SMS]
+   - Pasang Kapasitor Elco 1000uF - 2200uF 16V paralel pada VCC & GND SIM800L.
+
+C. SENSOR GETAR SW-420 (VIBRATION SENSOR)
+   - VCC   ---> Pin 3V3 NodeMCU
+   - GND   ---> Pin GND NodeMCU
+   - DO    ---> Pin D7 (GPIO13) NodeMCU  [Sinyal digital saat ada guncangan]
+
+D. MODUL RELAY 1-CHANNEL (PEMUTUS PENGAPIAN / ENGINE CUT-OFF)
+   - VCC   ---> Pin VIN (5V) NodeMCU
+   - GND   ---> Pin GND NodeMCU
+   - IN    ---> Pin D3 (GPIO0) NodeMCU   [Active LOW: LOW = Putus, HIGH = Normal]
+   - COM   ---> Kabel Kunci Kontak / CDI Motor
+   - NC    ---> Kabel Pengapian Menuju Koil (Default Terhubung saat Aman)
+
+E. MODUL BUZZER ALARM (SIRENE & LOCATOR)
+   - VCC   ---> Pin VIN (5V) NodeMCU
+   - GND   ---> Pin GND NodeMCU
+   - SIG   ---> Pin D0 (GPIO16) NodeMCU  [Melalui driver transistor 2N2222]
+
+F. RANGKAIAN MONITORING TEGANGAN AKI MOTOR (VOLTAGE DIVIDER RESISTOR)
+   - Aki Motor 12V (+) ---> Resistor R1 (100k Ohm) ---> Titik Tengah Pin A0
+   - Titik Tengah Pin A0 ---> Resistor R2 (22k Ohm) ---> Ground (GND)
+   *Rangkaian ini menurunkan tegangan aki (maks 15V) menjadi di bawah 3.0V ke Pin A0*
+
+
+3. SKEMA DISTRIBUSI DAYA & KELISTRIKAN (POWER SUPPLY)
+--------------------------------------------------------------------------------
+Aki Motor (12V) 
+      |
+      +---> Stepdown LM2596 #1 (Output: 5.0V / 2A) ---> Pin VIN NodeMCU & Relay
+      |
+      +---> Stepdown LM2596 #2 (Output: 4.0V / 3A) ---> VCC Modul SIM800L (+ Elco)
+      |
+      +---> Rangkaian Resistor Divider 100k / 22k   ---> Pin A0 NodeMCU
+
+
+4. CATATAN PENTING SAAT PERAKITAN:
+--------------------------------------------------------------------------------
+1. COMMON GROUND:
+   Semua kutub Ground (GND) dari Aki, Stepdown 1, Stepdown 2, NodeMCU, SIM800L,
+   GPS, Relay, dan Sensor WAJIB terhubung bersama dalam satu jalur Ground yang sama.
+
+2. CATU DAYA SIM800L:
+   SIM800L membutuhkan arus lonjakan sesaat hingga 2.0A saat memancarkan sinyal GSM.
+   Jika SIM800L terus restart atau kedip cepat, pastikan voltase stepdown diatur
+   pada kisaran 4.0V dan elco terpasang dengan baik.
+
+3. LOGIKA RELAY (ACTIVE LOW):
+   Pin D3 pada NodeMCU berlogika LOW saat memutus mesin dan HIGH saat kendaraan
+   dalam keadaan normal siap dikendarai.
+
+================================================================================

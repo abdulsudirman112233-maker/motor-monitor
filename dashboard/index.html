@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Keamanan & Pelacak Kendaraan Real-Time IoT</title>
+    <meta name="description" content="Dashboard pelacakan GPS dan kontrol keamanan kendaraan cerdas berbasis NodeMCU ESP8266, SIM800L, dan GPS Neo-6M.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Leaflet.js Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- TOP NAVBAR -->
+        <header class="top-navbar glass-panel">
+            <div class="brand-section">
+                <div class="brand-logo">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>SMART VEHICLE IOT TRACKER</h1>
+                    <p><i class="fa-solid fa-motorcycle"></i> Yamaha NMAX 155 &bull; Plat: <span style="color: var(--primary); font-weight: 700;">B 1234 XYZ</span></p>
+                </div>
+            </div>
+
+            <div class="nav-status-group">
+                <!-- Status Badges -->
+                <div class="status-badge" id="badgeConnection">
+                    <span class="pulse-dot"></span>
+                    <span>WIFI ONLINE</span>
+                </div>
+
+                <div class="status-badge" id="badgeSecurityMode">
+                    <i class="fa-solid fa-shield-halved" style="color: var(--accent-green);"></i>
+                    <span>ARMED</span>
+                </div>
+
+                <div class="status-badge" id="badgeEngineStatus">
+                    <i class="fa-solid fa-bolt" style="color: var(--primary);"></i>
+                    <span>ENGINE NORMAL</span>
+                </div>
+
+                <!-- Live Status & Helper Tool -->
+                <button class="btn-sim-mode" id="btnOpenGoogleMaps" title="Buka Koordinat Kendaraan Langsung di Google Maps" style="background: rgba(0, 240, 255, 0.15); border-color: var(--primary); color: var(--primary);">
+                    <i class="fa-solid fa-map-location-dot"></i> Google Maps
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN DASHBOARD GRID -->
+        <main class="dashboard-grid">
+            
+            <!-- LEFT COLUMN: LEAFLET MAP -->
+            <section class="map-container-wrapper glass-panel">
+                <div class="map-header-bar">
+                    <div class="address-info" id="addressInfoContainer">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span id="addressDisplay">Memuat titik lokasi GPS real kendaraan...</span>
+                    </div>
+
+                    <div class="map-actions">
+                        <button class="btn-map-control active" id="btnAutoCenter" title="Fokuskan Peta ke Kendaraan">
+                            <i class="fa-solid fa-crosshairs"></i> Auto Center
+                        </button>
+                        <button class="btn-map-control active" id="btnToggleGeofence" title="Tampilkan/Sembunyikan Radius Geofence">
+                            <i class="fa-solid fa-circle-notch"></i> Geofence
+                        </button>
+                        <button class="btn-map-control btn-map-layer active" id="btnLayerDark" title="Peta Dark Mode">
+                            <i class="fa-solid fa-moon"></i> Dark
+                        </button>
+                        <button class="btn-map-control btn-map-layer" id="btnLayerStreet" title="Peta Jalanan Real OpenStreetMap">
+                            <i class="fa-solid fa-road"></i> Street
+                        </button>
+                        <button class="btn-map-control btn-map-layer" id="btnLayerSatellite" title="Peta Citra Satelit Real Esri">
+                            <i class="fa-solid fa-earth-americas"></i> Satelit
+                        </button>
+                        <button class="btn-map-control" id="btnClearTrail" title="Hapus Riwayat Garis Jejak">
+                            <i class="fa-solid fa-trash-can"></i> Reset Jejak
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Peta Interaktif -->
+                <div id="map"></div>
+            </section>
+
+            <!-- RIGHT COLUMN: SPEEDOMETER, CONTROLS & TELEMETRY -->
+            <aside class="right-panel-wrapper">
+                
+                <!-- SPEEDOMETER HUD CARD -->
+                <div class="speedometer-card glass-panel">
+                    <div class="speed-dial-container">
+                        <svg class="speed-svg" viewBox="0 0 220 140">
+                            <defs>
+                                <linearGradient id="speedGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stop-color="#00f0ff" />
+                                    <stop offset="60%" stop-color="#ffab00" />
+                                    <stop offset="100%" stop-color="#ff3366" />
+                                </linearGradient>
+                            </defs>
+                            <!-- Background Arc (Radius 90, Center 110, 110, Arc from 180 to 0 deg) -->
+                            <path class="speed-meter-bg" d="M 20 110 A 90 90 0 0 1 200 110" />
+                            <!-- Progress Arc -->
+                            <path class="speed-meter-progress" id="speedMeterProgress" d="M 20 110 A 90 90 0 0 1 200 110" />
+                        </svg>
+
+                        <div class="speed-value-display">
+                            <span class="speed-number" id="speedNumber">0</span>
+                            <span class="speed-unit">KM / JAM</span>
+                        </div>
+                    </div>
+
+                    <div class="speed-meta-row">
+                        <div class="speed-meta-item">
+                            <span>KONDISI MESIN</span>
+                            <strong id="statEngineRunning" style="color: var(--text-secondary);">STANDBY</strong>
+                        </div>
+                        <div class="speed-meta-item">
+                            <span>STATUS GETARAN</span>
+                            <strong id="statVibration" style="color: var(--accent-green);">STABIL (AMAN)</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QUICK CONTROLS CARD -->
+                <div class="control-card glass-panel">
+                    <div class="card-title">
+                        <span><i class="fa-solid fa-sliders"></i> KONTROL JARAK JAUH</span>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-mono);">ESP8266 + SIM800L</span>
+                    </div>
+
+                    <!-- Engine Kill Switch -->
+                    <div class="engine-kill-box" id="engineKillBox">
+                        <div class="kill-switch-info">
+                            <h3><i class="fa-solid fa-power-off"></i> ENGINE KILL SWITCH</h3>
+                            <p>Memutus pengapian CDI via Relay D3</p>
+                        </div>
+                        <button class="btn-engine-toggle" id="btnToggleEngine" data-locked="false">
+                            <i class="fa-solid fa-ban"></i> MATIKAN MESIN
+                        </button>
+                    </div>
+
+                    <!-- Action Grid Buttons -->
+                    <div class="action-buttons-grid">
+                        <button class="btn-action arm-btn active" id="btnToggleArm" data-armed="true">
+                            <i class="fa-solid fa-shield-halved"></i>
+                            <span>ARM SYSTEM</span>
+                        </button>
+
+                        <button class="btn-action panic-btn" id="btnPanicSiren">
+                            <i class="fa-solid fa-bullhorn"></i>
+                            <span>PANIC SIREN</span>
+                        </button>
+
+                        <button class="btn-action" id="btnFindVehicle">
+                            <i class="fa-solid fa-location-arrow"></i>
+                            <span>CARI MOTOR (CHIRP)</span>
+                        </button>
+
+                        <button class="btn-action" id="btnRequestSms">
+                            <i class="fa-solid fa-comment-sms"></i>
+                            <span>KIRIM SMS SOS</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TELEMETRY SENSORS STATS CARD -->
+                <div class="telemetry-stats-card glass-panel">
+                    <div class="card-title">
+                        <span><i class="fa-solid fa-microchip"></i> DATA TELEMETRI SENSOR</span>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-label"><i class="fa-solid fa-satellite"></i> Satelit GPS</div>
+                            <div class="stat-value" id="statSatellites">9 Sats (1.1 HDOP)</div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-label"><i class="fa-solid fa-tower-cell"></i> Sinyal GSM</div>
+                            <div class="stat-value" id="statGsmSignal">83% (CSQ 26)</div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-label"><i class="fa-solid fa-car-battery"></i> Tegangan Aki</div>
+                            <div class="stat-value" id="statBattery">12.6 V (ACCU_12V)</div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-label"><i class="fa-solid fa-compass"></i> Heading / Arah</div>
+                            <div class="stat-value" id="statHeading">45° (NE)</div>
+                        </div>
+                    </div>
+                </div>
+
+            </aside>
+
+        </main>
+
+        <!-- BOTTOM LOGS PANEL -->
+        <footer class="bottom-logs-panel glass-panel">
+            <div class="logs-header">
+                <h3><i class="fa-solid fa-list-check"></i> RIWAYAT LOG AKTIVITAS & KEAMANAN REAL-TIME</h3>
+                <span style="font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-mono);">
+                    Auto-sync Firebase RTDB
+                </span>
+            </div>
+
+            <div class="logs-table-wrapper">
+                <table class="logs-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">WAKTU</th>
+                            <th style="width: 160px;">EVENT</th>
+                            <th>DESKRIPSI & PESAN</th>
+                            <th style="width: 180px;">KOORDINAT</th>
+                            <th style="width: 100px;">SPEED</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <!-- Diisi secara dinamis melalui JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- EMERGENCY THEFT ALERT MODAL -->
+    <div class="modal-overlay" id="emergencyAlertModal">
+        <div class="emergency-modal-content">
+            <div class="alarm-icon-box">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h2 style="color: var(--accent-red); font-size: 1.4rem;">PERINGATAN PENCURIAN!</h2>
+            <p style="color: var(--text-primary); margin-top: 12px; font-size: 0.95rem;">
+                Sensor getar SW-420 mendeteksi gerakan paksa saat sistem terkunci (ARMED).
+            </p>
+            <p style="color: var(--text-secondary); margin-top: 6px; font-size: 0.82rem;">
+                Sirene alarm kendaraan aktif dan SMS darurat beserta link Google Maps telah dikirim ke nomor pemilik.
+            </p>
+
+            <div class="modal-buttons">
+                <button class="btn-modal-cancel" id="btnResetAlarmModal">
+                    <i class="fa-solid fa-volume-xmark"></i> Matikan Sirene & Reset
+                </button>
+                <button class="btn-modal-confirm" onclick="document.getElementById('btnToggleEngine').click(); document.getElementById('emergencyAlertModal').classList.remove('active');">
+                    <i class="fa-solid fa-ban"></i> Matikan Mesin Sekarang
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase App, Database & Analytics CDN Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+
+    <!-- Leaflet.js Map Library -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- App Modular Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/map_controller.js"></script>
+    <script src="js/telemetry_viewer.js"></script>
+    <script src="js/vehicle_controls.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "vehicles": {
+      "$vehicle_id": {
+        ".read": true,
+        ".write": true,
+        "telemetry": {
+          ".indexOn": ["timestamp"]
+        },
+        "logs": {
+          ".indexOn": ["timestamp"]
+        }
+      }
+    }
+  }
+}

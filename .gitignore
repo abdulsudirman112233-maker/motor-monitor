@@ -1,0 +1,16 @@
+# Node & Web
+node_modules/
+npm-debug.log
+.DS_Store
+Thumbs.db
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.bak
+*.tmp
+
+# System Logs
+.system_generated/
+scratch/

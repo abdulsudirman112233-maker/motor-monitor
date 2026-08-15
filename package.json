@@ -1,0 +1,21 @@
+{
+  "name": "gps-gsm-vehicle-security-iot",
+  "version": "2.4.0",
+  "description": "Sistem Keamanan & Pelacak Kendaraan Real-Time IoT (NodeMCU ESP8266 + GPS Neo-6M + SIM800L + Web Dashboard)",
+  "main": "dashboard/index.html",
+  "scripts": {
+    "dev": "npx -y serve dashboard -l 3000",
+    "start": "npx -y serve dashboard -l 3000",
+    "serve": "npx -y serve dashboard -l 3000"
+  },
+  "keywords": [
+    "iot",
+    "esp8266",
+    "gps",
+    "sim800l",
+    "firebase",
+    "vehicle-tracker"
+  ],
+  "author": "Smart Vehicle IoT",
+  "license": "MIT"
+}
