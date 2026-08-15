@@ -14,11 +14,11 @@ git commit -m "IoT smart motorcycle security, dual-mode GSM/WiFi failover, real 
 git branch -M main
 git remote set-url origin https://github.com/abdulsudirman112233-maker/motor-monitor.git
 
-echo [2/3] Mengunggah file ke GitHub (git push -u origin main)...
+echo [2/3] Mengunggah file ke GitHub (git push -u origin main --force)...
 echo.
-echo * Catatan: Jika muncul jendela popup login GitHub, silakan klik 'Sign in with your browser'.
+echo * Catatan: Jika muncul jendela login GitHub, silakan klik 'Sign in with your browser'.
 echo.
-git push -u origin main
+git push -u origin main --force
 
 echo.
 if %ERRORLEVEL% EQU 0 (
