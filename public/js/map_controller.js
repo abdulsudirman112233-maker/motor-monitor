@@ -1,5 +1,5 @@
 // =============================================================================
-// ENGINE PETA LEAFLET.JS - PURE REAL-TIME GPS TRACKING (NO DUMMY DATA)
+// ENGINE PETA LEAFLET.JS - PURE REAL-TIME GPS TRACKING & MULTI-LAYER ENGINE
 // =============================================================================
 
 class MapController {
@@ -9,7 +9,7 @@ class MapController {
         this.vehicleMarker = null;
         this.trailPolyline = null;
         this.geofenceCircle = null;
-        this.currentLayer = 'street';
+        this.currentLayer = 'dark';
         this.tileLayers = {};
         this.pathCoordinates = [];
         this.autoCenter = true;
@@ -18,10 +18,10 @@ class MapController {
     }
 
     init() {
-        // Inisialisasi Map Leaflet dengan tampilan umum Indonesia sebelum titik GPS real terdeteksi
+        // Inisialisasi Map Leaflet
         this.map = L.map(this.elementId, {
-            center: [-2.5489, 118.0149], // Pusat Indonesia
-            zoom: 5,
+            center: APP_CONFIG.MAP.DEFAULT_CENTER,
+            zoom: APP_CONFIG.MAP.DEFAULT_ZOOM,
             zoomControl: false,
             attributionControl: false
         });
@@ -29,32 +29,45 @@ class MapController {
         // Posisi Zoom Control di kanan bawah
         L.control.zoom({ position: 'bottomright' }).addTo(this.map);
 
-        // Siapkan Tile Layers (Peta Jalanan Real, Satelit Asli, Dark Mode)
-        this.tileLayers.street = L.tileLayer(APP_CONFIG.MAP.TILE_LAYER_STREET, {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap'
-        });
-
+        // Siapkan Tile Layers yang super cepat & stabil
         this.tileLayers.dark = L.tileLayer(APP_CONFIG.MAP.TILE_LAYER_DARK, {
             maxZoom: 19,
             subdomains: 'abcd'
+        });
+
+        this.tileLayers.street = L.tileLayer(APP_CONFIG.MAP.TILE_LAYER_STREET, {
+            maxZoom: 19,
+            subdomains: 'abc'
         });
 
         this.tileLayers.satellite = L.tileLayer(APP_CONFIG.MAP.TILE_LAYER_SATELLITE, {
             maxZoom: 19
         });
 
-        // Set layer default ke Peta Jalanan Real
-        this.tileLayers.street.addTo(this.map);
+        // Set layer default (Dark Mode)
+        this.tileLayers.dark.addTo(this.map);
+
+        // Buat custom marker kendaraan di titik GPS real awal
+        this._createVehicleMarker(APP_CONFIG.MAP.DEFAULT_CENTER);
 
         // Inisialisasi garis jejak rute (Polyline)
-        this.trailPolyline = L.polyline([], {
+        this.trailPolyline = L.polyline([APP_CONFIG.MAP.DEFAULT_CENTER], {
             color: '#00f0ff',
             weight: 4,
             opacity: 0.85,
             smoothFactor: 1,
             lineJoin: 'round',
             dashArray: '2, 6'
+        }).addTo(this.map);
+
+        // Inisialisasi Geofence Circle
+        this.geofenceCircle = L.circle(APP_CONFIG.MAP.DEFAULT_CENTER, {
+            color: '#7928ca',
+            fillColor: '#7928ca',
+            fillOpacity: 0.12,
+            weight: 2,
+            dashArray: '6, 6',
+            radius: 250
         }).addTo(this.map);
 
         // Event saat user menggeser peta manual (matikan auto-center sementara)
@@ -64,7 +77,23 @@ class MapController {
             if (btnCenter) btnCenter.classList.remove('active');
         });
 
-        console.log('[MAP] Pure Real GPS Leaflet Map Initialized.');
+        // Auto-fix rendering Leaflet pada Vercel / Cloud Container
+        setTimeout(() => {
+            if (this.map) this.map.invalidateSize();
+        }, 300);
+
+        setTimeout(() => {
+            if (this.map) this.map.invalidateSize();
+        }, 1000);
+
+        window.addEventListener('resize', () => {
+            if (this.map) this.map.invalidateSize();
+        });
+
+        // Tampilkan alamat titik awal
+        this._reverseGeocode(APP_CONFIG.MAP.DEFAULT_CENTER[0], APP_CONFIG.MAP.DEFAULT_CENTER[1]);
+
+        console.log('[MAP] Leaflet Map Initialized at Real GPS Coordinates.');
     }
 
     _createVehicleMarker(latLng) {
@@ -80,18 +109,8 @@ class MapController {
         });
 
         this.vehicleMarker = L.marker(latLng, { icon: customIcon }).addTo(this.map);
-
-        // Buat Geofence Circle mengikuti posisi awal motor
-        if (!this.geofenceCircle) {
-            this.geofenceCircle = L.circle(latLng, {
-                color: '#7928ca',
-                fillColor: '#7928ca',
-                fillOpacity: 0.12,
-                weight: 2,
-                dashArray: '6, 6',
-                radius: 250
-            }).addTo(this.map);
-        }
+        this.lastLat = latLng[0];
+        this.lastLng = latLng[1];
     }
 
     updatePosition(lat, lng, heading = 0, speed = 0, isAlarmActive = false) {
@@ -102,24 +121,23 @@ class MapController {
         if (!numLat || !numLng || isNaN(numLat) || isNaN(numLng) || (Math.abs(numLat) < 0.001 && Math.abs(numLng) < 0.001)) {
             const addressEl = document.getElementById('addressDisplay');
             if (addressEl) {
-                addressEl.innerHTML = '<span style="color: var(--accent-orange);"><i class="fa-solid fa-satellite-dish fa-spin"></i> Menunggu sinyal satelit GPS real dari motor...</span>';
+                addressEl.innerHTML = '<span style="color: var(--accent-orange);"><i class="fa-solid fa-satellite-dish fa-spin"></i> Menunggu sinyal satelit GPS real...</span>';
             }
             return;
         }
 
         const newLatLng = [numLat, numLng];
-        const isFirstFix = (this.lastLat === null || this.lastLng === null);
         this.lastLat = numLat;
         this.lastLng = numLng;
 
-        // 1. Buat Marker pertama kali jika belum ada
+        // 1. Buat / Geser Marker
         if (!this.vehicleMarker) {
             this._createVehicleMarker(newLatLng);
         } else {
             this.vehicleMarker.setLatLng(newLatLng);
         }
 
-        // 2. Perbarui Tooltip / Popup Info Real-Time pada Marker
+        // 2. Perbarui Popup
         const popupContent = `
             <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; color: #fff; padding: 4px; min-width: 170px;">
                 <div style="font-weight: 700; color: #00f0ff; margin-bottom: 6px; font-size: 13px;">
@@ -137,7 +155,7 @@ class MapController {
         `;
         this.vehicleMarker.bindPopup(popupContent);
 
-        // 3. Putar Ikon Motor sesuai Heading/Arah Kompas Real
+        // 3. Putar Ikon Motor sesuai Heading
         const iconEl = document.getElementById('markerIconElement');
         const pinEl = document.getElementById('markerPinElement');
         if (iconEl) {
@@ -153,21 +171,21 @@ class MapController {
             }
         }
 
-        // 4. Tambahkan ke jejak lintasan (Polyline)
+        // 4. Tambahkan ke lintasan
         this.pathCoordinates.push(newLatLng);
         if (this.pathCoordinates.length > APP_CONFIG.MAP.MAX_POLYLINE_POINTS) {
             this.pathCoordinates.shift();
         }
-        this.trailPolyline.setLatLngs(this.pathCoordinates);
+        if (this.trailPolyline) {
+            this.trailPolyline.setLatLngs(this.pathCoordinates);
+        }
 
-        // 5. Auto Center kamera ke titik GPS nyata
-        if (isFirstFix) {
-            this.map.flyTo(newLatLng, 18, { duration: 1.5 });
-        } else if (this.autoCenter) {
+        // 5. Auto Center
+        if (this.autoCenter) {
             this.map.panTo(newLatLng, { animate: true, duration: 0.5 });
         }
 
-        // 6. Lakukan reverse geocoding untuk menampilkan nama jalan & kota nyata
+        // 6. Reverse Geocoding
         this._reverseGeocode(numLat, numLng);
     }
 
@@ -208,7 +226,9 @@ class MapController {
 
     clearTrail() {
         this.pathCoordinates = [];
-        this.trailPolyline.setLatLngs([]);
+        if (this.trailPolyline) {
+            this.trailPolyline.setLatLngs([]);
+        }
     }
 
     _reverseGeocode(lat, lng) {

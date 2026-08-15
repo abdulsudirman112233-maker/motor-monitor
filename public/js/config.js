@@ -20,8 +20,8 @@ const APP_CONFIG = {
 
     // Parameter Peta Leaflet & Geofence (Real Map & Live Tracking)
     MAP: {
-        DEFAULT_CENTER: [-6.2088, 106.8456], // Posisi inisial sementara sebelum GPS real terdeteksi
-        DEFAULT_ZOOM: 17,
+        DEFAULT_CENTER: [-5.460095, 122.616677], // Titik GPS Real Motor (Baubau, Sulawesi Tenggara)
+        DEFAULT_ZOOM: 18,
         MAX_POLYLINE_POINTS: 500,
         TILE_LAYER_DARK: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
         TILE_LAYER_STREET: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -33,20 +33,5 @@ const APP_CONFIG = {
         SIREN_HIGH_FREQ: 880, // Hz
         SIREN_LOW_FREQ: 440,  // Hz
         BEEP_FREQ: 1200       // Hz
-    },
-
-    // Rute Waypoints untuk Mode Simulasi Live Demo
-    SIMULATION_ROUTE: [
-        { lat: -6.2088, lng: 106.8456, speed: 0.0, heading: 45 },
-        { lat: -6.2085, lng: 106.8462, speed: 22.4, heading: 60 },
-        { lat: -6.2081, lng: 106.8471, speed: 41.8, heading: 65 },
-        { lat: -6.2075, lng: 106.8483, speed: 53.2, heading: 62 },
-        { lat: -6.2067, lng: 106.8496, speed: 48.0, heading: 55 },
-        { lat: -6.2058, lng: 106.8505, speed: 36.5, heading: 40 },
-        { lat: -6.2048, lng: 106.8510, speed: 20.0, heading: 15 },
-        { lat: -6.2039, lng: 106.8512, speed: 0.0, heading: 0 },
-        { lat: -6.2032, lng: 106.8515, speed: 18.2, heading: 350 },
-        { lat: -6.2021, lng: 106.8519, speed: 45.0, heading: 345 },
-        { lat: -6.2008, lng: 106.8524, speed: 58.7, heading: 340 }
-    ]
+    }
 };

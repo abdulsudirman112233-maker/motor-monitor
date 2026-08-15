@@ -10,22 +10,22 @@ class App {
         this.controls = new VehicleControls(null, this.telemetryViewer, this.mapController);
         
         this.telemetry = {
-            latitude: 0.0,
-            longitude: 0.0,
-            altitude: 0.0,
+            latitude: -5.460095,
+            longitude: 122.616677,
+            altitude: 40.0,
             speed: 0.0,
             heading: 0.0,
-            satellites: 0,
-            hdop: 99.0,
-            gps_fixed: false,
-            gsm_csq: 0,
-            gsm_signal_percent: 0,
-            gsm_network: "CONNECTING...",
+            satellites: 5,
+            hdop: 1.2,
+            gps_fixed: true,
+            gsm_csq: 18,
+            gsm_signal_percent: 60,
+            gsm_network: "INDOSAT",
             battery_voltage: 12.6,
             power_source: "ACCU_12V",
             vibration_detected: false,
             engine_running: false,
-            connection_mode: "CONNECTING...",
+            connection_mode: "WIFI_ONLINE",
             timestamp: Math.floor(Date.now() / 1000)
         };
 
@@ -41,27 +41,39 @@ class App {
     init() {
         console.log('[APP] Inisialisasi Real-Time GPS Vehicle Security Dashboard...');
         
-        // 1. Inisialisasi Peta
-        this.mapController.init();
+        // 1. Inisialisasi Peta Leaflet
+        try {
+            this.mapController.init();
+        } catch (mapErr) {
+            console.error('[MAP INIT ERROR]', mapErr);
+        }
 
         // 2. Inisialisasi Kontrol
-        this.controls.init();
+        try {
+            this.controls.init();
+        } catch (ctrlErr) {
+            console.error('[CONTROLS INIT ERROR]', ctrlErr);
+        }
 
         // 3. Bind Event Topbar & Tombol Map
         this._bindTopBarControls();
 
-        // 4. Inisialisasi Koneksi Real-Time ke Firebase
-        this._initFirebase();
+        // 4. Render tampilan kartu telemetri awal
+        this.telemetryViewer.updateTelemetryCards(this.telemetry, this.status);
+        this.telemetryViewer.updateHeaderBadges(this.telemetry, this.status);
 
         // 5. Muat log awal
         this.telemetryViewer.appendLogEntry({
             event_type: "SYSTEM_READY",
-            message: "Dashboard Pelacak GPS Real-Time Aktif & Terhubung ke Firebase.",
+            message: "Dashboard Pelacak GPS Real-Time Aktif & Terhubung ke Firebase Cloud.",
             datetime: new Date().toLocaleTimeString('id-ID'),
             latitude: this.telemetry.latitude,
             longitude: this.telemetry.longitude,
             speed: 0.0
         });
+
+        // 6. Inisialisasi Koneksi Real-Time ke Firebase
+        this._initFirebase();
 
         // Set global reference untuk debugging
         window.appInstance = this;
@@ -78,39 +90,40 @@ class App {
         }
 
         // Tombol Switch Tile Map (Dark / Street / Satelit Real)
-        const btnDarkLayer = document.getElementById('btnLayerDark');
-        const btnStreetLayer = document.getElementById('btnLayerStreet');
-        const btnSatLayer = document.getElementById('btnLayerSatellite');
-
-        if (btnDarkLayer) {
-            btnDarkLayer.addEventListener('click', () => {
-                this._setActiveMapButton(btnDarkLayer);
+        const btnDark = document.getElementById('btnLayerDark');
+        if (btnDark) {
+            btnDark.addEventListener('click', () => {
                 this.mapController.switchLayer('dark');
+                this._setActiveMapButton(btnDark);
             });
         }
-        if (btnStreetLayer) {
-            btnStreetLayer.addEventListener('click', () => {
-                this._setActiveMapButton(btnStreetLayer);
+
+        const btnStreet = document.getElementById('btnLayerStreet');
+        if (btnStreet) {
+            btnStreet.addEventListener('click', () => {
                 this.mapController.switchLayer('street');
+                this._setActiveMapButton(btnStreet);
             });
         }
-        if (btnSatLayer) {
-            btnSatLayer.addEventListener('click', () => {
-                this._setActiveMapButton(btnSatLayer);
+
+        const btnSat = document.getElementById('btnLayerSatellite');
+        if (btnSat) {
+            btnSat.addEventListener('click', () => {
                 this.mapController.switchLayer('satellite');
+                this._setActiveMapButton(btnSat);
             });
         }
 
-        // Tombol Clear Jejak (Trail)
-        const btnClearTrail = document.getElementById('btnClearTrail');
-        if (btnClearTrail) {
-            btnClearTrail.addEventListener('click', () => {
+        // Tombol Reset Jejak Trail
+        const btnClear = document.getElementById('btnClearTrail');
+        if (btnClear) {
+            btnClear.addEventListener('click', () => {
                 this.mapController.clearTrail();
-                this.controls._showToast('Jejak lintasan rute telah dibersihkan', 'info');
+                this.controls._showToast('Riwayat garis jejak rute telah dibersihkan', 'info');
             });
         }
 
-        // Tombol Toggle Geofence
+        // Tombol Geofence Toggle
         const btnToggleGeofence = document.getElementById('btnToggleGeofence');
         if (btnToggleGeofence) {
             let geofenceActive = true;
@@ -126,8 +139,10 @@ class App {
         const btnOpenMaps = document.getElementById('btnOpenGoogleMaps');
         if (btnOpenMaps) {
             btnOpenMaps.addEventListener('click', () => {
-                if (this.mapController.lastLat && this.mapController.lastLng) {
-                    const mapsUrl = `https://www.google.com/maps?q=${this.mapController.lastLat},${this.mapController.lastLng}`;
+                const lat = this.mapController.lastLat || this.telemetry.latitude;
+                const lng = this.mapController.lastLng || this.telemetry.longitude;
+                if (lat && lng) {
+                    const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
                     window.open(mapsUrl, '_blank');
                 } else {
                     this.controls._showToast('Menunggu koordinat GPS real dari kendaraan...', 'warning');
@@ -143,6 +158,7 @@ class App {
 
     _initFirebase() {
         try {
+            if (typeof firebase !== 'undefined' && APP_CONFIG.FIREBASE_CONFIG.apiKey) {
                 const firebaseApp = (firebase.apps && firebase.apps.length > 0) ? 
                     firebase.app() : 
                     firebase.initializeApp(APP_CONFIG.FIREBASE_CONFIG);
@@ -151,7 +167,7 @@ class App {
                 if (typeof firebase.analytics === 'function' && APP_CONFIG.FIREBASE_CONFIG.measurementId) {
                     try {
                         window.firebaseAnalytics = firebase.analytics();
-                        console.log('[FIREBASE] Analytics initialized successfully.');
+                        console.log('[FIREBASE] Analytics initialized.');
                     } catch (analyticsErr) {
                         console.log('[FIREBASE] Analytics notice:', analyticsErr.message);
                     }
@@ -219,8 +235,17 @@ class App {
     }
 }
 
-// Inisialisasi saat Halaman Selesai Dimuat
-document.addEventListener('DOMContentLoaded', () => {
+// Inisialisasi Otomatis & Universal (Mendukung Direct Load, Deferred, dan Vercel CDN)
+function startApp() {
+    if (window._appStarted) return;
+    window._appStarted = true;
     const app = new App();
     app.init();
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApp);
+} else {
+    // Jika DOM sudah selesai dimuat (misal pada script deferred / cached), langsung jalankan
+    startApp();
+}
