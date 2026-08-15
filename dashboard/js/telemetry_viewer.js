@@ -94,6 +94,7 @@ class TelemetryViewer {
 
         // Status Keamanan (ARMED / DISARMED)
         const armBadge = document.getElementById('badgeSecurityMode');
+        const btnArm = document.getElementById('btnToggleArm');
         if (armBadge) {
             const isArmed = status ? status.armed : true;
             armBadge.innerHTML = `
@@ -101,17 +102,39 @@ class TelemetryViewer {
                 <span>${isArmed ? 'ARMED' : 'DISARMED'}</span>
             `;
             armBadge.style.color = isArmed ? 'var(--accent-green)' : 'var(--text-secondary)';
+            
+            if (btnArm) {
+                btnArm.dataset.armed = isArmed ? 'true' : 'false';
+                btnArm.innerHTML = isArmed ? 
+                    '<i class="fa-solid fa-shield-halved"></i> ARMED' : 
+                    '<i class="fa-solid fa-shield"></i> DISARMED';
+                btnArm.classList.toggle('active', isArmed);
+            }
         }
 
-        // Status Engine Ignition
+        // Status Engine Ignition & Tombol Kill Switch
         const ignBadge = document.getElementById('badgeEngineStatus');
+        const btnEngine = document.getElementById('btnToggleEngine');
+        const boxEngine = document.getElementById('engineKillBox');
         if (ignBadge) {
             const isLocked = status ? status.engine_locked : false;
             ignBadge.innerHTML = `
                 <i class="fa-solid ${isLocked ? 'fa-ban' : 'fa-bolt'}"></i>
-                <span>${isLocked ? 'ENGINE LOCKED' : 'ENGINE NORMAL'}</span>
+                <span>${isLocked ? 'ENGINE CUT-OFF' : 'ENGINE NORMAL'}</span>
             `;
             ignBadge.style.color = isLocked ? 'var(--accent-red)' : 'var(--primary)';
+
+            if (btnEngine) {
+                btnEngine.dataset.locked = isLocked ? 'true' : 'false';
+                btnEngine.innerHTML = isLocked ? 
+                    '<i class="fa-solid fa-key"></i> PULIHKAN MESIN' : 
+                    '<i class="fa-solid fa-ban"></i> MATIKAN MESIN';
+                btnEngine.className = isLocked ? 'btn-engine-toggle unlocked-state' : 'btn-engine-toggle';
+            }
+
+            if (boxEngine) {
+                boxEngine.classList.toggle('locked', isLocked);
+            }
         }
     }
 

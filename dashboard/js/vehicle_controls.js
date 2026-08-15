@@ -106,16 +106,7 @@ class VehicleControls {
             btnEngine.addEventListener('click', () => {
                 const currentLockState = btnEngine.dataset.locked === 'true';
                 const nextLockState = !currentLockState;
-
-                if (nextLockState) {
-                    this._showConfirmationModal(
-                        'Konfirmasi Matikan Mesin',
-                        'Apakah Anda yakin ingin mematikan pengapian CDI kendaraan sekarang?',
-                        () => this.setEngineLock(true)
-                    );
-                } else {
-                    this.setEngineLock(false);
-                }
+                this.setEngineLock(nextLockState);
             });
         }
 
@@ -168,16 +159,17 @@ class VehicleControls {
         const boxEngine = document.getElementById('engineKillBox');
         if (btnEngine) {
             btnEngine.dataset.locked = lockState ? 'true' : 'false';
-            btnEngine.textContent = lockState ? 'RESTORE MESIN' : 'MATIKAN MESIN';
+            btnEngine.innerHTML = lockState ? 
+                '<i class="fa-solid fa-key"></i> PULIHKAN MESIN' : 
+                '<i class="fa-solid fa-ban"></i> MATIKAN MESIN';
             btnEngine.className = lockState ? 'btn-engine-toggle unlocked-state' : 'btn-engine-toggle';
         }
         if (boxEngine) {
-            if (lockState) boxEngine.classList.add('locked');
-            else boxEngine.classList.remove('locked');
+            boxEngine.classList.toggle('locked', lockState);
         }
 
         this._dispatchFirebaseCommand('lock_engine', lockState);
-        this._showToast(lockState ? 'Perintah: Mesin Telah Dimatikan (Cut-Off)' : 'Perintah: Pengapian Mesin Dipulihkan', lockState ? 'error' : 'success');
+        this._showToast(lockState ? 'Perintah: Mesin Telah Dimatikan (Relay Cut-Off)' : 'Perintah: Pengapian Mesin Dipulihkan', lockState ? 'error' : 'success');
     }
 
     setArmSystem(armedState) {

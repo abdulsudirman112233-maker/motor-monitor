@@ -115,6 +115,8 @@ void processWebControls() {
     if (firebaseClient.fetchControlCommands(cmds)) {
         // 1. Kontrol Relay Pemutus Mesin
         if (cmds.lockEngine != actuatorManager.isEngineLocked()) {
+            Serial.print(F("[WEB CONTROL] Perintah Engine Lock Berubah ke: "));
+            Serial.println(cmds.lockEngine ? F("LOCKED (RELAY LOW)") : F("UNLOCKED (RELAY HIGH)"));
             actuatorManager.setEngineLocked(cmds.lockEngine);
             String logMsg = cmds.lockEngine ? "Engine Cut-off diaktifkan dari Web Dashboard" : "Engine Cut-off dinonaktifkan dari Web Dashboard";
             firebaseClient.pushLogEvent("WEB_CONTROL", logMsg, gpsManager.getLatitude(), gpsManager.getLongitude(), gpsManager.getSpeed());
