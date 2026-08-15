@@ -238,7 +238,15 @@ class VehicleControls {
             const updates = {};
             updates[`vehicles/${window.currentVehicleId}/controls/${commandKey}`] = value;
             updates[`vehicles/${window.currentVehicleId}/controls/last_command_time`] = Math.floor(Date.now() / 1000);
-            window.firebaseDb.ref().update(updates);
+            
+            window.firebaseDb.ref().update(updates)
+                .then(() => {
+                    console.log(`[FIREBASE] Perintah '${commandKey}: ${value}' sukses terkirim.`);
+                })
+                .catch(err => {
+                    console.error(`[FIREBASE] Gagal kirim perintah:`, err);
+                    this._showToast(`Gagal kirim perintah: ${err.message}`, 'error');
+                });
         }
     }
 

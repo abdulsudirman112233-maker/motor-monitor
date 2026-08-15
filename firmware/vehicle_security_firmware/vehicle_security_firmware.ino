@@ -150,14 +150,22 @@ void processWebControls() {
         // 6. Request Kirim SMS Darurat Manual dari Web Dashboard
         if (cmds.emergencySmsRequest) {
             Serial.println(F("[WEB CONTROL] Tombol 'KIRIM SMS SOS' Ditekan dari Web Dashboard!"));
-            String mapsUrl = gpsManager.hasValidFix() ? gpsManager.getGoogleMapsLink() : "https://maps.google.com/?q=0.0,0.0 (Menunggu Fix GPS)";
-            String sosMsg = "[SOS DARURAT]\nPermintaan lokasi dari Dashboard:\n" + mapsUrl + "\nKecepatan: " + String(gpsManager.getSpeed(), 1) + " km/h\nAki: " + String(readBatteryVoltage(), 1) + "V";
+            
+            double lat = gpsManager.getLatitude();
+            double lng = gpsManager.getLongitude();
+            String mapsUrl = (lat != 0.0 && lng != 0.0) ? 
+                ("https://maps.google.com/?q=" + String(lat, 6) + "," + String(lng, 6)) : 
+                "Mencari Sinyal GPS";
+
+            String sosMsg = "[SOS DARURAT IOT]\nPermintaan lokasi dari Web Dashboard:\n" + mapsUrl + "\nKecepatan: " + String(gpsManager.getSpeed(), 1) + " km/h\nAki: " + String(readBatteryVoltage(), 1) + "V";
             
             bool sent = gsmManager.sendSMS(OWNER_PHONE_NUMBER, sosMsg);
             if (sent) {
                 Serial.println(F("[WEB CONTROL] SOS SMS Sukses Terkirim ke No Pemilik."));
+                firebaseClient.pushLogEvent("SOS_SMS_SENT", "SMS darurat sukses terkirim ke pemilik (" OWNER_PHONE_NUMBER ")", lat, lng, gpsManager.getSpeed());
             } else {
                 Serial.println(F("[WEB CONTROL] Gagal Kirim SMS SOS. Cek sinyal & pulsa SIM800L."));
+                firebaseClient.pushLogEvent("SOS_SMS_FAILED", "Gagal kirim SMS: Cek pulsa aktif atau catu daya SIM800L", lat, lng, gpsManager.getSpeed());
             }
             firebaseClient.acknowledgeCommand("emergency_sms_request");
         }

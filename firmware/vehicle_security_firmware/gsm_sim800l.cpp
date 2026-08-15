@@ -153,13 +153,14 @@ bool GSMSim800L::sendSMS(const String &phoneNumber, const String &messageText) {
     Serial.println(phoneNumber);
 
     _gsmSerial.listen();
+    delay(50);
     
-    // 1. Pastikan Text Mode dan Konfigurasi SMS aktif
-    sendATCommand("AT+CMGF=1", 1000, "OK");
-    sendATCommand("AT+CSCS=\"GSM\"", 1000, "OK");
-    sendATCommand("AT+CSMP=17,167,0,0", 1000, "OK");
+    // 1. Pastikan Text Mode dan Konfigurasi SMS GSM aktif
+    sendATCommand("AT+CMGF=1", 800, "OK");
+    sendATCommand("AT+CSCS=\"GSM\"", 800, "OK");
+    sendATCommand("AT+CSMP=17,167,0,0", 800, "OK");
 
-    // Bersihkan buffer serial sebelum mengirim perintah AT+CMGS
+    // Bersihkan buffer serial
     while (_gsmSerial.available()) {
         _gsmSerial.read();
     }
@@ -168,10 +169,10 @@ bool GSMSim800L::sendSMS(const String &phoneNumber, const String &messageText) {
     String cmd = "AT+CMGS=\"" + phoneNumber + "\"";
     _gsmSerial.println(cmd);
     
-    // 3. Tunggu prompt '>'
+    // 3. Tunggu prompt '>' dari SIM800L
     unsigned long startTime = millis();
     bool gotPrompt = false;
-    while (millis() - startTime < 4000) {
+    while (millis() - startTime < 6000) {
         if (_gsmSerial.available()) {
             char c = _gsmSerial.read();
             if (c == '>') {
@@ -189,17 +190,19 @@ bool GSMSim800L::sendSMS(const String &phoneNumber, const String &messageText) {
 
     // 4. Kirim teks pesan dan akhiri dengan Ctrl+Z (ASCII 26)
     _gsmSerial.print(messageText);
-    delay(100);
+    delay(200);
     _gsmSerial.write(26); // ASCII 26 = Ctrl+Z
+    _gsmSerial.println();
+    delay(200);
 
-    // 5. Tunggu respons pengiriman dari jaringan seluler (maksimal 15 detik)
+    // 5. Tunggu respons pengiriman dari jaringan seluler (maksimal 25 detik)
     startTime = millis();
     String resp = "";
-    while (millis() - startTime < 15000) {
+    while (millis() - startTime < 25000) {
         if (_gsmSerial.available()) {
             char c = _gsmSerial.read();
             resp += c;
-            if (resp.indexOf("OK") != -1 && resp.indexOf("+CMGS:") != -1) {
+            if (resp.indexOf("+CMGS:") != -1 || resp.indexOf("OK") != -1) {
                 Serial.print(F("[GSM] SMS Berhasil Terkirim! Respons: "));
                 Serial.println(resp);
                 return true;
