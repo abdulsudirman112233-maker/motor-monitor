@@ -143,8 +143,9 @@ class App {
 
     _initFirebase() {
         try {
-            if (typeof firebase !== 'undefined' && APP_CONFIG.FIREBASE_CONFIG.apiKey) {
-                const firebaseApp = firebase.initializeApp(APP_CONFIG.FIREBASE_CONFIG);
+                const firebaseApp = (firebase.apps && firebase.apps.length > 0) ? 
+                    firebase.app() : 
+                    firebase.initializeApp(APP_CONFIG.FIREBASE_CONFIG);
                 
                 // Inisialisasi Firebase Analytics jika tersedia
                 if (typeof firebase.analytics === 'function' && APP_CONFIG.FIREBASE_CONFIG.measurementId) {

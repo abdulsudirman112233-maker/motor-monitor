@@ -1,5 +1,5 @@
 // =============================================================================
-// VEHICLE CONTROLS & COMMAND DISPATCHER
+// VEHICLE CONTROLS & COMMAND DISPATCHER (DUAL-DISPATCH: SDK + REST API)
 // =============================================================================
 
 class VehicleControls {
@@ -38,78 +38,79 @@ class VehicleControls {
             setTimeout(() => {
                 const osc = this.audioContext.createOscillator();
                 const gain = this.audioContext.createGain();
+
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(APP_CONFIG.AUDIO.BEEP_FREQ, this.audioContext.currentTime);
-                gain.gain.setValueAtTime(0.15, this.audioContext.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.12);
+
+                gain.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.08);
 
                 osc.connect(gain);
                 gain.connect(this.audioContext.destination);
+
                 osc.start();
-                osc.stop(this.audioContext.currentTime + 0.12);
-            }, i * 160);
+                osc.stop(this.audioContext.currentTime + 0.08);
+            }, i * 140);
         }
     }
 
     startBrowserSiren() {
-        if (!this.audioContext || this.isSirenPlaying) return;
+        if (this.isSirenPlaying) return;
+        if (!this.audioContext) return;
         if (this.audioContext.state === 'suspended') {
             this.audioContext.resume();
         }
 
         this.isSirenPlaying = true;
-        const osc = this.audioContext.createOscillator();
-        const gain = this.audioContext.createGain();
-        osc.type = 'sawtooth';
-        
-        // Modulasi nada sirene bergantian tinggi-rendah
         const now = this.audioContext.currentTime;
-        osc.frequency.setValueAtTime(APP_CONFIG.AUDIO.SIREN_HIGH_FREQ, now);
-        
-        gain.gain.setValueAtTime(0.2, now);
-        osc.connect(gain);
-        gain.connect(this.audioContext.destination);
-        osc.start();
-        this.sirenOscillator = { osc, gain };
 
-        // Animasi frekuensi LFO
-        let high = true;
+        this.sirenOscillator = this.audioContext.createOscillator();
+        const sirenGain = this.audioContext.createGain();
+
+        this.sirenOscillator.type = 'sawtooth';
+        sirenGain.gain.setValueAtTime(0.25, now);
+
+        // Modulasi nada sirene (polisi/darurat)
+        this.sirenOscillator.frequency.setValueAtTime(APP_CONFIG.AUDIO.SIREN_LOW_FREQ, now);
+        this.sirenOscillator.frequency.linearRampToValueAtTime(APP_CONFIG.AUDIO.SIREN_HIGH_FREQ, now + 0.5);
+
         this.sirenInterval = setInterval(() => {
-            if (!this.isSirenPlaying || !this.sirenOscillator) return;
+            if (!this.isSirenPlaying) return;
             const t = this.audioContext.currentTime;
-            high = !high;
-            this.sirenOscillator.osc.frequency.setTargetAtTime(
-                high ? APP_CONFIG.AUDIO.SIREN_HIGH_FREQ : APP_CONFIG.AUDIO.SIREN_LOW_FREQ,
-                t, 0.08
-            );
-        }, 300);
+            this.sirenOscillator.frequency.setValueAtTime(APP_CONFIG.AUDIO.SIREN_LOW_FREQ, t);
+            this.sirenOscillator.frequency.linearRampToValueAtTime(APP_CONFIG.AUDIO.SIREN_HIGH_FREQ, t + 0.45);
+        }, 500);
+
+        this.sirenOscillator.connect(sirenGain);
+        sirenGain.connect(this.audioContext.destination);
+        this.sirenOscillator.start();
     }
 
     stopBrowserSiren() {
+        if (!this.isSirenPlaying) return;
         this.isSirenPlaying = false;
         if (this.sirenInterval) clearInterval(this.sirenInterval);
         if (this.sirenOscillator) {
             try {
-                this.sirenOscillator.gain.gain.setTargetAtTime(0.001, this.audioContext.currentTime, 0.05);
-                setTimeout(() => {
-                    this.sirenOscillator.osc.stop();
-                    this.sirenOscillator = null;
-                }, 100);
+                this.sirenOscillator.stop();
+                this.sirenOscillator.disconnect();
             } catch (e) {}
+            this.sirenOscillator = null;
         }
     }
 
     _bindUIEvents() {
-        // 1. Engine Kill Switch Button
+        // 1. Tombol Engine Kill Switch
         const btnEngine = document.getElementById('btnToggleEngine');
         if (btnEngine) {
             btnEngine.addEventListener('click', () => {
-                const isCurrentlyLocked = btnEngine.dataset.locked === 'true';
-                if (!isCurrentlyLocked) {
-                    // Tampilkan dialog konfirmasi matikan mesin
+                const currentLockState = btnEngine.dataset.locked === 'true';
+                const nextLockState = !currentLockState;
+
+                if (nextLockState) {
                     this._showConfirmationModal(
-                        'Matikan Mesin Kendaraan?',
-                        'Relay pengapian akan memutus arus CDI/Starter. Kendaraan tidak akan bisa dinyalakan sampai dibuka kembali.',
+                        'Konfirmasi Matikan Mesin',
+                        'Apakah Anda yakin ingin mematikan pengapian CDI kendaraan sekarang?',
                         () => this.setEngineLock(true)
                     );
                 } else {
@@ -118,12 +119,12 @@ class VehicleControls {
             });
         }
 
-        // 2. Tombol Arm / Disarm
+        // 2. Tombol Arm / Disarm System
         const btnArm = document.getElementById('btnToggleArm');
         if (btnArm) {
             btnArm.addEventListener('click', () => {
-                const isCurrentlyArmed = btnArm.dataset.armed === 'true';
-                this.setArmSystem(!isCurrentlyArmed);
+                const currentArmed = btnArm.dataset.armed === 'true';
+                this.setArmSystem(!currentArmed);
             });
         }
 
@@ -135,7 +136,7 @@ class VehicleControls {
             });
         }
 
-        // 4. Tombol Cari Kendaraan (Locator Chirp)
+        // 4. Tombol Find Vehicle (Chirp)
         const btnFind = document.getElementById('btnFindVehicle');
         if (btnFind) {
             btnFind.addEventListener('click', () => {
@@ -213,8 +214,22 @@ class VehicleControls {
     }
 
     requestEmergencySMS() {
+        const btnSms = document.getElementById('btnRequestSms');
+        const origContent = btnSms ? btnSms.innerHTML : '';
+        if (btnSms) {
+            btnSms.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> MENGIRIM SMS...';
+            btnSms.disabled = true;
+        }
+
         this._dispatchFirebaseCommand('emergency_sms_request', true);
-        this._showToast('Permintaan Kirim SMS Darurat Terkirim ke Modul SIM800L', 'warning');
+        this._showToast('Permintaan Kirim SMS SOS Berhasil Dikirim ke Cloud Firebase!', 'warning');
+
+        setTimeout(() => {
+            if (btnSms) {
+                btnSms.innerHTML = origContent;
+                btnSms.disabled = false;
+            }
+        }, 3500);
     }
 
     resetTheftAlarm() {
@@ -228,26 +243,46 @@ class VehicleControls {
 
     _dispatchFirebaseCommand(commandKey, value) {
         if (window.appInstance && window.appInstance.isSimMode) {
-            // Mode Simulasi: Simulasikan respons instan
             window.appInstance.handleSimulatedCommand(commandKey, value);
             return;
         }
 
-        // Tembak Firebase RTDB jika online
-        if (window.firebaseDb && window.currentVehicleId) {
-            const updates = {};
-            updates[`vehicles/${window.currentVehicleId}/controls/${commandKey}`] = value;
-            updates[`vehicles/${window.currentVehicleId}/controls/last_command_time`] = Math.floor(Date.now() / 1000);
-            
+        const vehicleId = window.currentVehicleId || APP_CONFIG.DEFAULT_VEHICLE_ID;
+        const nowSec = Math.floor(Date.now() / 1000);
+        const updates = {};
+        updates[`vehicles/${vehicleId}/controls/${commandKey}`] = value;
+        updates[`vehicles/${vehicleId}/controls/last_command_time`] = nowSec;
+
+        // 1. Dispatch via Firebase Web SDK
+        if (window.firebaseDb) {
             window.firebaseDb.ref().update(updates)
                 .then(() => {
-                    console.log(`[FIREBASE] Perintah '${commandKey}: ${value}' sukses terkirim.`);
+                    console.log(`[FIREBASE SDK] Perintah '${commandKey}: ${value}' sukses terkirim.`);
                 })
                 .catch(err => {
-                    console.error(`[FIREBASE] Gagal kirim perintah:`, err);
-                    this._showToast(`Gagal kirim perintah: ${err.message}`, 'error');
+                    console.warn(`[FIREBASE SDK WARN] ${err.message}`);
                 });
         }
+
+        // 2. Dual-Dispatch via Direct HTTP REST API (Sangat Handal untuk Vercel / Mobile Browser)
+        const restUrl = `${APP_CONFIG.FIREBASE_CONFIG.databaseURL}/vehicles/${vehicleId}/controls.json`;
+        const restBody = JSON.stringify({
+            [commandKey]: value,
+            last_command_time: nowSec
+        });
+
+        fetch(restUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: restBody
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log(`[FIREBASE REST] Sukses terkirim ke Cloud Database:`, data);
+        })
+        .catch(err => {
+            console.error(`[FIREBASE REST ERROR]`, err);
+        });
     }
 
     _showConfirmationModal(title, message, onConfirm) {
@@ -257,57 +292,79 @@ class VehicleControls {
                     <div class="alarm-icon-box" style="background: rgba(255, 171, 0, 0.2); border-color: var(--accent-amber); color: var(--accent-amber);">
                         <i class="fa-solid fa-triangle-exclamation"></i>
                     </div>
-                    <h2>${title}</h2>
-                    <p style="color: var(--text-secondary); margin-top: 10px; font-size: 0.88rem;">${message}</p>
-                    <div class="modal-buttons">
-                        <button class="btn-modal-cancel" id="btnCancelConfirm">Batal</button>
-                        <button class="btn-modal-confirm" id="btnOkConfirm">Ya, Lanjutkan</button>
+                    <h2 style="color: var(--accent-amber); font-size: 1.3rem;">${title}</h2>
+                    <p style="color: var(--text-primary); margin-top: 12px; font-size: 0.95rem;">${message}</p>
+                    <div class="modal-buttons" style="margin-top: 20px;">
+                        <button class="btn-modal-cancel" id="btnCancelDynamicModal">Batal</button>
+                        <button class="btn-modal-confirm" id="btnConfirmDynamicModal" style="background: var(--accent-red);">Ya, Eksekusi</button>
                     </div>
                 </div>
             </div>
         `;
-        const div = document.createElement('div');
-        div.innerHTML = modalHtml;
-        document.body.appendChild(div);
 
-        const modalEl = document.getElementById('dynamicConfirmModal');
-        document.getElementById('btnCancelConfirm').onclick = () => {
-            modalEl.remove();
-        };
-        document.getElementById('btnOkConfirm').onclick = () => {
-            modalEl.remove();
-            onConfirm();
-        };
+        const existingModal = document.getElementById('dynamicConfirmModal');
+        if (existingModal) existingModal.remove();
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        document.getElementById('btnCancelDynamicModal').addEventListener('click', () => {
+            document.getElementById('dynamicConfirmModal').remove();
+        });
+
+        document.getElementById('btnConfirmDynamicModal').addEventListener('click', () => {
+            document.getElementById('dynamicConfirmModal').remove();
+            if (onConfirm) onConfirm();
+        });
     }
 
     _showToast(message, type = 'info') {
-        let container = document.getElementById('toastContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'toastContainer';
-            container.className = 'toast-container';
-            document.body.appendChild(container);
+        let toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toastContainer';
+            toastContainer.style.cssText = `
+                position: fixed;
+                top: 24px;
+                right: 24px;
+                z-index: 9999;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                pointer-events: none;
+            `;
+            document.body.appendChild(toastContainer);
         }
 
         const toast = document.createElement('div');
-        toast.className = `toast-item ${type}`;
-        
-        let icon = 'fa-info-circle';
-        if (type === 'error') icon = 'fa-triangle-exclamation';
-        if (type === 'success') icon = 'fa-circle-check';
-        if (type === 'warning') icon = 'fa-bell';
+        const icon = type === 'error' ? 'fa-circle-exclamation' : (type === 'warning' ? 'fa-triangle-exclamation' : 'fa-circle-check');
+        const color = type === 'error' ? 'var(--accent-red)' : (type === 'warning' ? 'var(--accent-amber)' : 'var(--accent-green)');
 
-        toast.innerHTML = `
-            <i class="fa-solid ${icon}"></i>
-            <span>${message}</span>
+        toast.style.cssText = `
+            background: rgba(17, 23, 38, 0.92);
+            border: 1px solid ${color};
+            border-left: 5px solid ${color};
+            color: #fff;
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.88rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            backdrop-filter: blur(8px);
+            animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: auto;
         `;
-        container.appendChild(toast);
+
+        toast.innerHTML = `<i class="fa-solid ${icon}" style="color: ${color}; font-size: 1.1rem;"></i> <span>${message}</span>`;
+        toastContainer.appendChild(toast);
 
         setTimeout(() => {
             toast.style.opacity = '0';
-            toast.style.transform = 'translateX(100%)';
+            toast.style.transform = 'translateX(50px)';
             toast.style.transition = 'all 0.3s ease';
             setTimeout(() => toast.remove(), 300);
-        }, 3500);
+        }, 3200);
     }
 }
