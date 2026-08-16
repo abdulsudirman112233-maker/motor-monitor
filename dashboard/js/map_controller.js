@@ -60,15 +60,16 @@ class MapController {
             dashArray: '2, 6'
         }).addTo(this.map);
 
-        // Inisialisasi Geofence Circle
+        // Inisialisasi Geofence Circle (Pagar Virtual 75 Meter)
         this.geofenceCircle = L.circle(APP_CONFIG.MAP.DEFAULT_CENTER, {
             color: '#7928ca',
             fillColor: '#7928ca',
-            fillOpacity: 0.12,
+            fillOpacity: 0.15,
             weight: 2,
             dashArray: '6, 6',
-            radius: 250
+            radius: APP_CONFIG.MAP.DEFAULT_GEOFENCE_RADIUS || 75
         }).addTo(this.map);
+        this.geofenceCircle.bindTooltip('<i class="fa-solid fa-shield-halved"></i> <b>Pagar Virtual Geofence: 75 Meter</b>', { direction: 'top' });
 
         // Event saat user menggeser peta manual (matikan auto-center sementara)
         this.map.on('dragstart', () => {

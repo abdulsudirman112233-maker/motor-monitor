@@ -34,6 +34,15 @@ public:
     bool isVibrationDetected() const;
     uint32_t getVibrationCount() const;
 
+    // Geofence Radius 75m Methods
+    void checkGeofence(double currentLat, double currentLng, bool gpsFixed);
+    double getAnchorLatitude() const { return _anchorLat; }
+    double getAnchorLongitude() const { return _anchorLng; }
+    bool isGeofenceActive() const { return _geofenceArmed; }
+    float getGeofenceRadius() const { return _geofenceRadius; }
+    void setGeofenceRadius(float radiusMeters) { _geofenceRadius = radiusMeters; }
+    double calculateDistanceMeters(double lat1, double lon1, double lat2, double lon2);
+
 private:
     uint8_t _sw420Pin;
     SecurityState _state;
@@ -52,8 +61,16 @@ private:
     String _lastAlarmReason;
     bool _smsAlertSent;
 
+    // Geofence Tracking
+    double _anchorLat;
+    double _anchorLng;
+    bool _geofenceArmed;
+    float _geofenceRadius;
+    bool _geofenceAlertSent;
+
     void _handleVibrationSensor();
     void _sendEmergencySMS();
+    void _sendGeofenceSMS(double distMeters, double lat, double lng, float speed);
 };
 
 #endif // SECURITY_SYSTEM_H

@@ -50,6 +50,6 @@
 #define VIBRATION_WINDOW_MS       3000   // Jendela waktu akumulasi getaran (3 detik)
 #define VIBRATION_SHOCK_THRESHOLD 4      // Jumlah getaran beruntun untuk memicu Alarm & SMS (Misal: 4 kali getaran)
 #define VIBRATION_ALARM_HOLD_MS   20000  // Durasi sirene berbunyi saat alarm terpicu (20 detik)
-#define GEOFENCE_DEFAULT_RADIUS   250    // Radius geofence default dalam meter
+#define GEOFENCE_DEFAULT_RADIUS   75     // Radius geofence default dalam meter (75 meter)
 
 #endif // CONFIG_H

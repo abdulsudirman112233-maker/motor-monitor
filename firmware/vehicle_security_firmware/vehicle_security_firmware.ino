@@ -224,6 +224,9 @@ void loop() {
     securitySystem.update();
     firebaseClient.updateWiFi();
 
+    // 1.1 Evaluasi Pagar Virtual Geofence 75m secara real-time
+    securitySystem.checkGeofence(gpsManager.getLatitude(), gpsManager.getLongitude(), gpsManager.hasValidFix());
+
     // 2. Deteksi perubahan status koneksi WiFi & SMS Failover Notifikasi
     bool currentWiFiState = firebaseClient.isWiFiConnected();
     if (lastWiFiState && !currentWiFiState) {
