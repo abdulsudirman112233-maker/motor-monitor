@@ -131,20 +131,26 @@ void processWebControls() {
             firebaseClient.pushLogEvent("WEB_CONTROL", "Sistem di-DISARM dari Web Dashboard", gpsManager.getLatitude(), gpsManager.getLongitude(), gpsManager.getSpeed());
         }
 
-        // 3. Tombol Sirene Panic Alarm
+        // 3. Tombol Sirene Panic Alarm dari Web Dashboard
         if (cmds.triggerPanic) {
+            Serial.println(F("[WEB CONTROL] >>> TOMBOL PANIC SIREN DITEKAN! MENGAKTIFKAN BUZZER PADA PIN D0! <<<"));
+            actuatorManager.triggerPanicSiren();
             securitySystem.triggerAlarm("WEB_DASHBOARD_PANIC_BUTTON");
             firebaseClient.acknowledgeCommand("trigger_panic");
+            firebaseClient.pushLogEvent("PANIC_SIREN", "Tombol Panic Siren Ditekan dari Web - Buzzer Aktif", gpsManager.getLatitude(), gpsManager.getLongitude(), gpsManager.getSpeed());
         }
 
         // 4. Tombol Cari Kendaraan (Chirp)
         if (cmds.findVehicle) {
+            Serial.println(F("[WEB CONTROL] Tombol Cari Motor Ditekan -> 3x Beep Buzzer"));
             actuatorManager.triggerFinderChirp();
             firebaseClient.acknowledgeCommand("find_vehicle");
         }
 
-        // 5. Reset Alarm
+        // 5. Reset Alarm & Matikan Buzzer
         if (cmds.resetAlarm) {
+            Serial.println(F("[WEB CONTROL] Reset Alarm Ditekan -> Mematikan Buzzer"));
+            actuatorManager.stopBuzzer();
             securitySystem.resetAlarm();
             firebaseClient.acknowledgeCommand("reset_alarm");
         }
