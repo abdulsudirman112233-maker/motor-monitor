@@ -50,16 +50,17 @@ D. MODUL RELAY 1-CHANNEL (PEMUTUS PENGAPIAN / ENGINE CUT-OFF)
    - COM   ---> Kabel Kunci Kontak / CDI Motor
    - NC    ---> Kabel Pengapian Menuju Koil (Default Terhubung saat Aman)
 
-E. MODUL / BUZZER ALARM 5V (SIRENE DARURAT & LOCATOR)
-   - Opsi 1 (Modul Buzzer 3-Pin Siap Pakai - Rekomendasi Praktis):
-     * VCC (atau +)   ---> Pin VIN (5V) NodeMCU
-     * GND (atau -)   ---> Pin GND NodeMCU
-     * I/O (atau SIG) ---> Pin D0 (GPIO16) NodeMCU
-   - Opsi 2 (Buzzer 2-Kaki 5V Biasa dengan Driver Transistor):
-     * Kaki Positif (+) Buzzer ---> Pin VIN (5V) NodeMCU
-     * Kaki Negatif (-) Buzzer ---> Pin Kolektor (C) Transistor NPN (2N2222/BC547/S8050)
-     * Pin Basis (B) Transistor ---> Resistor 1k Ohm ---> Pin D0 (GPIO16) NodeMCU
-     * Pin Emitor (E) Transistor ---> Pin GND NodeMCU
+E. MODUL BUZZER ALARM (LANGSUNG / TANPA RESISTOR & TRANSISTOR EKSTERNAL)
+   - Opsi 1 (Modul Buzzer 3-Pin - Rekomendasi Praktis & Nyaring):
+     * Pin VCC (atau +)   ---> Pin VIN (5V) NodeMCU
+     * Pin GND (atau -)   ---> Pin GND NodeMCU
+     * Pin I/O (atau SIG) ---> Pin D0 (GPIO16) NodeMCU
+     (Langsung sambung 3 kabel jumper, 100% tanpa resistor & tanpa transistor!)
+
+   - Opsi 2 (Buzzer 2-Kaki Langsung Colok):
+     * Kaki Positif (+)   ---> Pin D0 (GPIO16) NodeMCU
+     * Kaki Negatif (-)   ---> Pin GND NodeMCU
+     (Langsung sambung 2 kabel ke NodeMCU, 100% tanpa resistor & tanpa transistor!)
 
 F. RANGKAIAN MONITORING TEGANGAN AKI MOTOR (VOLTAGE DIVIDER RESISTOR)
    - Aki Motor 12V (+) ---> Resistor R1 (100k Ohm) ---> Titik Tengah Pin A0
