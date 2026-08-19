@@ -34,7 +34,7 @@ public:
     bool isVibrationDetected() const;
     uint32_t getVibrationCount() const;
 
-    // Geofence Radius 75m Methods
+    // Geofence Radius 20m Methods
     void checkGeofence(double currentLat, double currentLng, bool gpsFixed);
     double getAnchorLatitude() const { return _anchorLat; }
     double getAnchorLongitude() const { return _anchorLng; }

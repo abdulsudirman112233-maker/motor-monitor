@@ -25,7 +25,7 @@ void SecuritySystem::begin(ActuatorManager* actuators, GPSManager* gps, GSMSim80
         _geofenceArmed = true;
     }
     
-    Serial.println(F("[SECURITY] Sistem Keamanan Aktif. Mode: ARMED (Sensitivitas Cerdas & Geofence 75m Aktif)."));
+    Serial.println(F("[SECURITY] Sistem Keamanan Aktif. Mode: ARMED (Sensitivitas Cerdas & Geofence 20m Aktif)."));
 }
 
 void SecuritySystem::update() {

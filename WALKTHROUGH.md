@@ -80,8 +80,11 @@ graph TD
   * Terjadi guncangan kuat terus menerus saat sistem dalam status `ARMED`.
   * Sistem menyalakan **Sirene Alarm selama 20 detik**, memicu notifikasi bahaya di Web, dan mengirim **SMS Darurat Google Maps ke HP pemilik**.
 
-### C. Pure Real GPS Tracking
+### C. Pure Real GPS Tracking & Auto-Geofence 20 Meter
 * Peta Leaflet.js membaca koordinat nyata satelit (`Latitude: -5.460095, Longitude: 122.616677`).
+* Dilengkapi fitur **Auto-Geofence Pagar Virtual Radius 20 Meter**:
+  * Saat sistem di-`ARM`, titik parkir motor dikunci sebagai pusat pagar aman 20m.
+  * Jika motor berpindah $> 20\text{ meter}$, sistem otomatis mematikan mesin (*Auto Relay Cut-off*), menyalakan sirene buzzer, dan mengirimkan SMS peringatan rute GPS ke HP pemilik.
 * Bebas data dummy Jakarta. Dilengkapi fitur *Reverse Geocoding* alamat jalan otomatis dan tombol 1-Click *Buka di Google Maps*.
 
 ### D. Dual-Dispatch Vercel Command (Zero-Latency)
