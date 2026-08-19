@@ -1,17 +1,19 @@
 // =============================================================================
-// SKETCH DIAGNOSTIK & PENGUJIAN MANDIRI: BUZZER 3.3V / 5V (NODEMCU ESP8266)
+// SKETCH DIAGNOSTIK & PENGUJIAN MANDIRI: BUZZER 5V (NODEMCU ESP8266)
 // =============================================================================
-// Gunakan sketch ini untuk menguji secara fisik apakah Buzzer Anda berbunyi nyaring.
+// Gunakan sketch ini untuk menguji secara fisik apakah Buzzer 5V Anda berbunyi nyaring.
 //
-// SKEMA SAMBUNGAN BUZZER 3.3V:
-// A. Jika Buzzer 2-Kaki 3.3V:
-//    - Kaki Positif (+) ---> Pin D0 (GPIO16) NodeMCU
-//    - Kaki Negatif (-) ---> Pin GND NodeMCU
+// SKEMA SAMBUNGAN BUZZER 5V:
+// A. Jika menggunakan MODUL BUZZER 3-PIN (Rekomendasi Praktis):
+//    - Pin VCC (atau +)   ---> Pin VIN (5V) NodeMCU
+//    - Pin GND (atau -)   ---> Pin GND NodeMCU
+//    - Pin I/O (atau SIG) ---> Pin D0 (GPIO16) NodeMCU
 //
-// B. Jika Modul Buzzer 3-Pin:
-//    - Pin VCC ---> Pin 3V3 (3.3V) NodeMCU
-//    - Pin GND ---> Pin GND NodeMCU
-//    - Pin I/O (SIG) ---> Pin D0 (GPIO16) NodeMCU
+// B. Jika menggunakan BUZZER 2-KAKI 5V BIASA (Driver Transistor NPN 2N2222/BC547):
+//    - Buzzer (+) ---> Pin VIN (5V) NodeMCU
+//    - Buzzer (-) ---> Pin Kolektor (C) Transistor
+//    - Pin Basis (B) Transistor ---> Resistor 1k Ohm ---> Pin D0 NodeMCU
+//    - Pin Emitor (E) Transistor ---> Pin GND NodeMCU
 // =============================================================================
 
 #define PIN_BUZZER D0 // GPIO16
