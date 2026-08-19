@@ -22,7 +22,7 @@ const APP_CONFIG = {
     MAP: {
         DEFAULT_CENTER: [-5.460095, 122.616677], // Titik GPS Real Motor (Baubau, Sulawesi Tenggara)
         DEFAULT_ZOOM: 18,
-        DEFAULT_GEOFENCE_RADIUS: 75, // Radius Pagar Virtual (75 Meter)
+        DEFAULT_GEOFENCE_RADIUS: 20, // Radius Pagar Virtual (20 Meter)
         MAX_POLYLINE_POINTS: 500,
         TILE_LAYER_DARK: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
         TILE_LAYER_STREET: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",

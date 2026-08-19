@@ -110,7 +110,7 @@ void SecuritySystem::arm() {
         _anchorLat = _gps->getLatitude();
         _anchorLng = _gps->getLongitude();
         _geofenceArmed = true;
-        Serial.print(F("[SECURITY] Geofence 75m Di-ARM di titik: "));
+        Serial.print(F("[SECURITY] Geofence 20m Di-ARM di titik: "));
         Serial.print(_anchorLat, 6);
         Serial.print(F(", "));
         Serial.println(_anchorLng, 6);
@@ -118,7 +118,7 @@ void SecuritySystem::arm() {
         _geofenceArmed = false;
     }
 
-    Serial.println(F("[SECURITY] Mode Keamanan diubah: ARMED (Terkunci & Pagar Virtual 75m Aktif)."));
+    Serial.println(F("[SECURITY] Mode Keamanan diubah: ARMED (Terkunci & Pagar Virtual 20m Aktif)."));
     if (_actuators) {
         _actuators->triggerArmChirp();
     }
@@ -164,7 +164,7 @@ void SecuritySystem::checkGeofence(double currentLat, double currentLng, bool gp
 
     double distance = calculateDistanceMeters(_anchorLat, _anchorLng, currentLat, currentLng);
     
-    // Jika motor berpindah melebihi radius batas aman (75 Meter)
+    // Jika motor berpindah melebihi radius batas aman (20 Meter)
     if (distance > _geofenceRadius) {
         if (!_geofenceAlertSent) {
             _geofenceAlertSent = true;
@@ -185,7 +185,7 @@ void SecuritySystem::checkGeofence(double currentLat, double currentLng, bool gp
             _sendGeofenceSMS(distance, currentLat, currentLng, spd);
 
             // 3. Picu status Alarm Sistem
-            triggerAlarm("GEOFENCE_BREACH_75M");
+            triggerAlarm("GEOFENCE_BREACH_20M");
         }
     } else {
         // Reset flag alert jika motor kembali ke dalam radius aman
@@ -199,7 +199,7 @@ void SecuritySystem::_sendGeofenceSMS(double distMeters, double lat, double lng,
     if (!_gsm) return;
 
     String mapsUrl = "https://maps.google.com/?q=" + String(lat, 6) + "," + String(lng, 6);
-    String smsText = "[ALARM GEOFENCE 75M]\n";
+    String smsText = "[ALARM GEOFENCE 20M]\n";
     smsText += "Motor keluar dari radius aman!\n";
     smsText += "Jarak: " + String(distMeters, 0) + "m | Spd: " + String(speed, 1) + "km/h\n";
     smsText += "Lokasi: " + mapsUrl + "\n";
