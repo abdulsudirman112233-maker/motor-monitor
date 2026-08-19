@@ -50,10 +50,14 @@ D. MODUL RELAY 1-CHANNEL (PEMUTUS PENGAPIAN / ENGINE CUT-OFF)
    - COM   ---> Kabel Kunci Kontak / CDI Motor
    - NC    ---> Kabel Pengapian Menuju Koil (Default Terhubung saat Aman)
 
-E. MODUL BUZZER ALARM (SIRENE & LOCATOR)
-   - VCC   ---> Pin VIN (5V) NodeMCU
-   - GND   ---> Pin GND NodeMCU
-   - SIG   ---> Pin D0 (GPIO16) NodeMCU  [Melalui driver transistor 2N2222]
+E. MODUL / BUZZER ALARM 3.3V (SIRENE & LOCATOR)
+   - Opsi 1 (Buzzer 2-Kaki 3.3V Biasa):
+     * Kaki Positif (+) ---> Pin D0 (GPIO16) NodeMCU
+     * Kaki Negatif (-) ---> Pin GND NodeMCU
+   - Opsi 2 (Modul Buzzer 3-Pin):
+     * VCC   ---> Pin 3V3 (3.3V) NodeMCU
+     * GND   ---> Pin GND NodeMCU
+     * I/O / SIG ---> Pin D0 (GPIO16) NodeMCU
 
 F. RANGKAIAN MONITORING TEGANGAN AKI MOTOR (VOLTAGE DIVIDER RESISTOR)
    - Aki Motor 12V (+) ---> Resistor R1 (100k Ohm) ---> Titik Tengah Pin A0
