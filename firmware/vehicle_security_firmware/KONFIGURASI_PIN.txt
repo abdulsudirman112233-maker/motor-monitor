@@ -12,7 +12,8 @@
 | D1          | GPIO 5       | GSM SIM800L (TXD)   | SoftwareSerial RX (Terima)|
 | D2          | GPIO 4       | GSM SIM800L (RXD)   | SoftwareSerial TX (Kirim) |
 | D7          | GPIO 13      | Sensor SW-420 (DO)  | Digital Input (Interrupt) |
-| D3          | GPIO 0       | Relay Modul (IN)    | Active LOW (Engine Cut-Off)|
+| D3          | GPIO 0       | Relay 2-CH (IN1)    | Active LOW (CH1: Engine Cut-Off)|
+| D4          | GPIO 2       | Relay 2-CH (IN2)    | Active LOW (CH2: Cadangan/Aux)  |
 | D0          | GPIO 16      | Buzzer Alarm (SIG)  | Digital Output (Driver)   |
 | A0          | ADC0         | Resistor Divider Aki| Analog In (Tegangan 0-3.3V)|
 | 3V3         | Power 3.3V   | VCC GPS & SW-420    | Output Tegangan 3.3 Volt  |
@@ -43,12 +44,17 @@ C. SENSOR GETAR SW-420 (VIBRATION SENSOR)
    - GND   ---> Pin GND NodeMCU
    - DO    ---> Pin D7 (GPIO13) NodeMCU  [Sinyal digital saat ada guncangan]
 
-D. MODUL RELAY 1-CHANNEL (PEMUTUS PENGAPIAN / ENGINE CUT-OFF)
+D. MODUL RELAY 2-CHANNEL (PEMUTUS PENGAPIAN & FITUR CADANGAN)
    - VCC   ---> Pin VIN (5V) NodeMCU
    - GND   ---> Pin GND NodeMCU
-   - IN    ---> Pin D3 (GPIO0) NodeMCU   [Active LOW: LOW = Putus, HIGH = Normal]
-   - COM   ---> Kabel Kunci Kontak / CDI Motor
-   - NC    ---> Kabel Pengapian Menuju Koil (Default Terhubung saat Aman)
+   - IN1   ---> Pin D3 (GPIO0) NodeMCU   [Active LOW: Kontrol Channel 1 - Engine Cut-Off]
+   - IN2   ---> Pin D4 (GPIO2) NodeMCU   [Active LOW: Kontrol Channel 2 - Cadangan/Klakson/Starter]
+   - JUMPER KUNING (JD-VCC & VCC): Biarkan tetap terpasang menghubungkan JD-VCC dan VCC.
+
+   *Sambungan Terminal Kabel Motor (Pada Channel 1 - Engine Cut-Off):*
+   - COM1  ---> Kabel Kunci Kontak / CDI Motor
+   - NC1   ---> Kabel Pengapian Menuju Koil (Default Terhubung saat Aman)
+   *(Channel 2 COM2 & NO2/NC2 dapat digunakan untuk klakson/lampu/starter opsional)*
 
 E. MODUL BUZZER ALARM (SIRENE & LOCATOR)
    - VCC   ---> Pin VIN (5V) NodeMCU

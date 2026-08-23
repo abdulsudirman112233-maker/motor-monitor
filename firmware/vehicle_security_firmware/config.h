@@ -8,7 +8,7 @@
 // =============================================================================
 #define DEVICE_ID           "vehicle_01"
 #define FIRMWARE_VERSION    "v2.4.0-PRO"
-#define VEHICLE_NAME        "Yamaha NMAX 155 - Smart IoT"
+#define VEHICLE_NAME        "Yamaha Jupiter Z1 - Smart IoT"
 
 // =============================================================================
 // PEMETAAN PIN NODEMCU ESP8266 (Didelegasikan ke file pin_config.h)
