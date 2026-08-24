@@ -29,23 +29,30 @@ class MapController {
         // Posisi Zoom Control di kanan bawah
         L.control.zoom({ position: 'bottomright' }).addTo(this.map);
 
-        // Siapkan Tile Layers yang super cepat & stabil
+        // Siapkan Tile Layers Google Maps Resmi & Dark Mode
+        this.tileLayers.googleRoadmap = L.tileLayer(APP_CONFIG.MAP.TILE_LAYER_GOOGLE_ROADMAP, {
+            maxZoom: 20,
+            subdomains: ['0', '1', '2', '3']
+        });
+
+        this.tileLayers.googleSatellite = L.tileLayer(APP_CONFIG.MAP.TILE_LAYER_GOOGLE_SATELLITE, {
+            maxZoom: 20,
+            subdomains: ['0', '1', '2', '3']
+        });
+
+        this.tileLayers.googleTraffic = L.tileLayer(APP_CONFIG.MAP.TILE_LAYER_GOOGLE_TRAFFIC, {
+            maxZoom: 20,
+            subdomains: ['0', '1', '2', '3']
+        });
+
         this.tileLayers.dark = L.tileLayer(APP_CONFIG.MAP.TILE_LAYER_DARK, {
             maxZoom: 19,
             subdomains: 'abcd'
         });
 
-        this.tileLayers.street = L.tileLayer(APP_CONFIG.MAP.TILE_LAYER_STREET, {
-            maxZoom: 19,
-            subdomains: 'abc'
-        });
-
-        this.tileLayers.satellite = L.tileLayer(APP_CONFIG.MAP.TILE_LAYER_SATELLITE, {
-            maxZoom: 19
-        });
-
-        // Set layer default (Dark Mode)
-        this.tileLayers.dark.addTo(this.map);
+        // Set layer default (Google Maps Roadmap)
+        this.currentLayer = 'googleRoadmap';
+        this.tileLayers.googleRoadmap.addTo(this.map);
 
         // Buat custom marker kendaraan di titik GPS real awal
         this._createVehicleMarker(APP_CONFIG.MAP.DEFAULT_CENTER);

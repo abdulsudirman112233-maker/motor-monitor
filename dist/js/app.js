@@ -89,28 +89,40 @@ class App {
             });
         }
 
-        // Tombol Switch Tile Map (Dark / Street / Satelit Real)
+        // Tombol Switch Tile Google Maps Resmi (Roadmap / Satelit Hybrid / Traffic / Dark)
+        const btnGoogleRoad = document.getElementById('btnLayerGoogleRoadmap');
+        if (btnGoogleRoad) {
+            btnGoogleRoad.addEventListener('click', () => {
+                this.mapController.switchLayer('googleRoadmap');
+                this._setActiveMapButton(btnGoogleRoad);
+                this.controls._showToast('Layer Peta: Google Maps', 'info');
+            });
+        }
+
+        const btnGoogleSat = document.getElementById('btnLayerGoogleSatellite');
+        if (btnGoogleSat) {
+            btnGoogleSat.addEventListener('click', () => {
+                this.mapController.switchLayer('googleSatellite');
+                this._setActiveMapButton(btnGoogleSat);
+                this.controls._showToast('Layer Peta: Google Satelit Hybrid', 'info');
+            });
+        }
+
+        const btnGoogleTraffic = document.getElementById('btnLayerGoogleTraffic');
+        if (btnGoogleTraffic) {
+            btnGoogleTraffic.addEventListener('click', () => {
+                this.mapController.switchLayer('googleTraffic');
+                this._setActiveMapButton(btnGoogleTraffic);
+                this.controls._showToast('Layer Peta: Google Maps Live Traffic', 'info');
+            });
+        }
+
         const btnDark = document.getElementById('btnLayerDark');
         if (btnDark) {
             btnDark.addEventListener('click', () => {
                 this.mapController.switchLayer('dark');
                 this._setActiveMapButton(btnDark);
-            });
-        }
-
-        const btnStreet = document.getElementById('btnLayerStreet');
-        if (btnStreet) {
-            btnStreet.addEventListener('click', () => {
-                this.mapController.switchLayer('street');
-                this._setActiveMapButton(btnStreet);
-            });
-        }
-
-        const btnSat = document.getElementById('btnLayerSatellite');
-        if (btnSat) {
-            btnSat.addEventListener('click', () => {
-                this.mapController.switchLayer('satellite');
-                this._setActiveMapButton(btnSat);
+                this.controls._showToast('Layer Peta: Cyberpunk Dark Mode', 'info');
             });
         }
 
