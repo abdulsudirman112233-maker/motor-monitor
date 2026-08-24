@@ -7,9 +7,11 @@ ActuatorManager::ActuatorManager(uint8_t relayPin, uint8_t buzzerPin)
 }
 
 void ActuatorManager::begin() {
-    // Relay active LOW: HIGH = Relay OFF (Mesin Menyala Normal), LOW = Relay ON (Mesin Terputus)
+    // Logika Relay Dibalik (Active HIGH / disesuaikan dengan wiring motor):
+    // LOW  = Relay Normal (Mesin Menyala / Normal)
+    // HIGH = Relay Cut-Off (Mesin Terputus / Dimatikan)
     pinMode(_relayPin, OUTPUT);
-    digitalWrite(_relayPin, HIGH); // Default: mesin tidak terkunci saat awal boot
+    digitalWrite(_relayPin, LOW); // Default: mesin normal / tidak terkunci saat awal boot
     _isEngineLocked = false;
 
     // Buzzer pin ke basis transistor 2N2222: HIGH = Buzzer ON, LOW = Buzzer OFF
@@ -17,19 +19,19 @@ void ActuatorManager::begin() {
     digitalWrite(_buzzerPin, LOW);
     _buzzerState = false;
 
-    Serial.println(F("[ACTUATOR] Relay & Buzzer siap dioperasikan."));
+    Serial.println(F("[ACTUATOR] Relay (Kondisi Dibalik) & Buzzer siap dioperasikan."));
 }
 
 void ActuatorManager::setEngineLocked(bool lock) {
     _isEngineLocked = lock;
     if (_isEngineLocked) {
-        // Cut-off pengapian (Relay Aktif = Jalur pengapian terputus)
-        digitalWrite(_relayPin, LOW);
-        Serial.println(F("[ACTUATOR] >>> ENGINE LOCKED / CUT-OFF DIAKTIFKAN <<<"));
-    } else {
-        // Pulihkan pengapian (Relay Nonaktif = Jalur normal)
+        // Cut-off pengapian (Relay HIGH = Jalur pengapian terputus)
         digitalWrite(_relayPin, HIGH);
-        Serial.println(F("[ACTUATOR] >>> ENGINE UNLOCKED / PENGAPIAN NORMAL <<<"));
+        Serial.println(F("[ACTUATOR] >>> ENGINE LOCKED / CUT-OFF DIAKTIFKAN (PIN HIGH) <<<"));
+    } else {
+        // Pulihkan pengapian (Relay LOW = Jalur normal)
+        digitalWrite(_relayPin, LOW);
+        Serial.println(F("[ACTUATOR] >>> ENGINE UNLOCKED / PENGAPIAN NORMAL (PIN LOW) <<<"));
     }
 }
 

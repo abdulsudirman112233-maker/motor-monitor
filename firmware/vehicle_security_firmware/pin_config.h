@@ -59,10 +59,10 @@
 #define PIN_SW420           D7    // GPIO13 - Input Digital dari Pin DO Sensor SW-420
 
 // =============================================================================
-// 4. PIN AKTUATOR MODUL RELAY 2-CHANNEL (ACTIVE LOW)
+// 4. PIN AKTUATOR MODUL RELAY 2-CHANNEL (KONDISI DIBALIK)
 // =============================================================================
 // Channel 1: Output digital untuk mematikan mesin jarak jauh (Engine Cut-Off)
-// LOW = Relay ON (Memutus arus pengapian), HIGH = Relay OFF (Mesin normal)
+// HIGH = Relay Cut-Off (Memutus arus pengapian), LOW = Relay Normal (Mesin hidup)
 #define PIN_RELAY_IGNITION  D3    // GPIO0  - Output Kontrol Relay Channel 1 (Engine Cut-Off)
 #define PIN_RELAY_AUX       D4    // GPIO2  - Output Kontrol Relay Channel 2 (Cadangan / Klakson / Starter)
 
