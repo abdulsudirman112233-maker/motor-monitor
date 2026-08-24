@@ -7,11 +7,11 @@ ActuatorManager::ActuatorManager(uint8_t relayPin, uint8_t buzzerPin)
 }
 
 void ActuatorManager::begin() {
-    // Logika Relay Dibalik (Active HIGH / disesuaikan dengan wiring motor):
-    // LOW  = Relay Normal (Mesin Menyala / Normal)
-    // HIGH = Relay Cut-Off (Mesin Terputus / Dimatikan)
+    // Relay Active LOW Standar Optocoupler (Sangat Stabil & Respon Cepat):
+    // HIGH = Relay Nonaktif / OFF (Mesin Menyala Normal)
+    // LOW  = Relay Aktif / ON (Mesin Terputus / Engine Cut-Off)
     pinMode(_relayPin, OUTPUT);
-    digitalWrite(_relayPin, LOW); // Default: mesin normal / tidak terkunci saat awal boot
+    digitalWrite(_relayPin, HIGH); // Default: Mesin normal saat awal dinyalakan
     _isEngineLocked = false;
 
     // Buzzer pin ke basis transistor 2N2222: HIGH = Buzzer ON, LOW = Buzzer OFF
@@ -19,19 +19,19 @@ void ActuatorManager::begin() {
     digitalWrite(_buzzerPin, LOW);
     _buzzerState = false;
 
-    Serial.println(F("[ACTUATOR] Relay (Kondisi Dibalik) & Buzzer siap dioperasikan."));
+    Serial.println(F("[ACTUATOR] Relay (Active LOW Standar) & Buzzer siap dioperasikan."));
 }
 
 void ActuatorManager::setEngineLocked(bool lock) {
     _isEngineLocked = lock;
     if (_isEngineLocked) {
-        // Cut-off pengapian (Relay HIGH = Jalur pengapian terputus)
-        digitalWrite(_relayPin, HIGH);
-        Serial.println(F("[ACTUATOR] >>> ENGINE LOCKED / CUT-OFF DIAKTIFKAN (PIN HIGH) <<<"));
-    } else {
-        // Pulihkan pengapian (Relay LOW = Jalur normal)
+        // Cut-off pengapian (Tarik Koil Relay: LOW = Aktif)
         digitalWrite(_relayPin, LOW);
-        Serial.println(F("[ACTUATOR] >>> ENGINE UNLOCKED / PENGAPIAN NORMAL (PIN LOW) <<<"));
+        Serial.println(F("[ACTUATOR] >>> ENGINE LOCKED / CUT-OFF DIAKTIFKAN (RELAY ON) <<<"));
+    } else {
+        // Pulihkan pengapian (Lepas Koil Relay: HIGH = Nonaktif)
+        digitalWrite(_relayPin, HIGH);
+        Serial.println(F("[ACTUATOR] >>> ENGINE UNLOCKED / PENGAPIAN NORMAL (RELAY OFF) <<<"));
     }
 }
 
