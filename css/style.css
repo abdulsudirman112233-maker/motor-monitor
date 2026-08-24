@@ -245,9 +245,32 @@ body {
 .map-actions {
     display: flex;
     gap: 8px;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 240, 255, 0.3) transparent;
+    padding-bottom: 3px;
+    max-width: 100%;
+}
+
+.map-actions::-webkit-scrollbar {
+    height: 4px;
+}
+
+.map-actions::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+}
+
+.map-actions::-webkit-scrollbar-thumb {
+    background: rgba(0, 240, 255, 0.4);
+    border-radius: 2px;
 }
 
 .btn-map-control {
+    flex-shrink: 0;
+    white-space: nowrap;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
@@ -260,6 +283,7 @@ body {
     align-items: center;
     gap: 6px;
     transition: var(--transition);
+    user-select: none;
 }
 
 .btn-map-control:hover, .btn-map-control.active {
@@ -1098,5 +1122,76 @@ body {
     }
     .bottom-logs-panel {
         height: 250px;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-rows: 440px auto;
+        gap: 12px;
+    }
+
+    .top-navbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 14px;
+    }
+
+    .nav-status-group {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+
+    .map-header-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 10px 12px;
+    }
+
+    .address-info {
+        max-width: 100%;
+        font-size: 0.78rem;
+    }
+
+    .map-actions {
+        width: 100%;
+        display: flex;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        gap: 6px;
+        padding-bottom: 6px;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+    }
+
+    .btn-map-control {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+        padding: 6px 10px;
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .app-container {
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .dashboard-grid {
+        grid-template-rows: 380px auto;
+    }
+
+    .action-buttons-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .geofence-presets-row {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
     }
 }
