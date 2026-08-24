@@ -63,42 +63,74 @@
         <!-- MAIN DASHBOARD GRID -->
         <main class="dashboard-grid">
             
-            <!-- LEFT COLUMN: LEAFLET MAP -->
-            <section class="map-container-wrapper glass-panel">
-                <div class="map-header-bar">
-                    <div class="address-info" id="addressInfoContainer">
-                        <i class="fa-solid fa-location-dot"></i>
-                        <span id="addressDisplay">Memuat titik lokasi GPS real kendaraan...</span>
+            <!-- LEFT COLUMN: MAP & ACTIVITY LOGS -->
+            <div class="left-column-wrapper">
+                
+                <!-- LEAFLET MAP -->
+                <section class="map-container-wrapper glass-panel">
+                    <div class="map-header-bar">
+                        <div class="address-info" id="addressInfoContainer">
+                            <i class="fa-solid fa-location-dot"></i>
+                            <span id="addressDisplay">Memuat titik lokasi GPS real kendaraan...</span>
+                        </div>
+
+                        <div class="map-actions">
+                            <button class="btn-map-control active" id="btnAutoCenter" title="Fokuskan Peta ke Kendaraan">
+                                <i class="fa-solid fa-crosshairs"></i> Auto Center
+                            </button>
+                            <button class="btn-map-control active" id="btnToggleGeofence" title="Tampilkan/Sembunyikan Radius Geofence">
+                                <i class="fa-solid fa-circle-notch"></i> Geofence
+                            </button>
+                            <button class="btn-map-control btn-map-layer active" id="btnLayerGoogleRoadmap" title="Peta Google Maps Resmi">
+                                <i class="fa-brands fa-google"></i> Google Maps
+                            </button>
+                            <button class="btn-map-control btn-map-layer" id="btnLayerGoogleSatellite" title="Peta Citra Satelit Google Hybrid">
+                                <i class="fa-solid fa-earth-asia"></i> Satelit
+                            </button>
+                            <button class="btn-map-control btn-map-layer" id="btnLayerGoogleTraffic" title="Peta Kemacetan Real-Time Google Traffic">
+                                <i class="fa-solid fa-traffic-light"></i> Lalu Lintas
+                            </button>
+                            <button class="btn-map-control btn-map-layer" id="btnLayerDark" title="Peta Dark Mode">
+                                <i class="fa-solid fa-moon"></i> Dark
+                            </button>
+                            <button class="btn-map-control" id="btnClearTrail" title="Hapus Riwayat Garis Jejak">
+                                <i class="fa-solid fa-trash-can"></i> Reset Jejak
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="map-actions">
-                        <button class="btn-map-control active" id="btnAutoCenter" title="Fokuskan Peta ke Kendaraan">
-                            <i class="fa-solid fa-crosshairs"></i> Auto Center
-                        </button>
-                        <button class="btn-map-control active" id="btnToggleGeofence" title="Tampilkan/Sembunyikan Radius Geofence">
-                            <i class="fa-solid fa-circle-notch"></i> Geofence
-                        </button>
-                        <button class="btn-map-control btn-map-layer active" id="btnLayerGoogleRoadmap" title="Peta Google Maps Resmi">
-                            <i class="fa-brands fa-google"></i> Google Maps
-                        </button>
-                        <button class="btn-map-control btn-map-layer" id="btnLayerGoogleSatellite" title="Peta Citra Satelit Google Hybrid">
-                            <i class="fa-solid fa-earth-asia"></i> Satelit
-                        </button>
-                        <button class="btn-map-control btn-map-layer" id="btnLayerGoogleTraffic" title="Peta Kemacetan Real-Time Google Traffic">
-                            <i class="fa-solid fa-traffic-light"></i> Lalu Lintas
-                        </button>
-                        <button class="btn-map-control btn-map-layer" id="btnLayerDark" title="Peta Dark Mode">
-                            <i class="fa-solid fa-moon"></i> Dark
-                        </button>
-                        <button class="btn-map-control" id="btnClearTrail" title="Hapus Riwayat Garis Jejak">
-                            <i class="fa-solid fa-trash-can"></i> Reset Jejak
-                        </button>
-                    </div>
-                </div>
+                    <!-- Peta Interaktif -->
+                    <div id="map"></div>
+                </section>
 
-                <!-- Peta Interaktif -->
-                <div id="map"></div>
-            </section>
+                <!-- ACTIVITY & SECURITY LOGS PANEL -->
+                <section class="bottom-logs-panel glass-panel">
+                    <div class="logs-header">
+                        <h3><i class="fa-solid fa-list-check"></i> RIWAYAT LOG AKTIVITAS & KEAMANAN REAL-TIME</h3>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-mono);">
+                            Auto-sync Firebase RTDB
+                        </span>
+                    </div>
+
+                    <div class="logs-table-wrapper">
+                        <table class="logs-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 130px;">WAKTU</th>
+                                    <th style="width: 150px;">EVENT</th>
+                                    <th>DESKRIPSI & PESAN</th>
+                                    <th style="width: 170px;">KOORDINAT</th>
+                                    <th style="width: 90px;">SPEED</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsTableBody">
+                                <!-- Diisi secara dinamis melalui JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+            </div>
 
             <!-- RIGHT COLUMN: CONTROLS, GEOFENCE & TELEMETRY -->
             <aside class="right-panel-wrapper">
@@ -252,33 +284,6 @@
             </aside>
 
         </main>
-
-        <!-- BOTTOM LOGS PANEL -->
-        <footer class="bottom-logs-panel glass-panel">
-            <div class="logs-header">
-                <h3><i class="fa-solid fa-list-check"></i> RIWAYAT LOG AKTIVITAS & KEAMANAN REAL-TIME</h3>
-                <span style="font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-mono);">
-                    Auto-sync Firebase RTDB
-                </span>
-            </div>
-
-            <div class="logs-table-wrapper">
-                <table class="logs-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 140px;">WAKTU</th>
-                            <th style="width: 160px;">EVENT</th>
-                            <th>DESKRIPSI & PESAN</th>
-                            <th style="width: 180px;">KOORDINAT</th>
-                            <th style="width: 100px;">SPEED</th>
-                        </tr>
-                    </thead>
-                    <tbody id="logsTableBody">
-                        <!-- Diisi secara dinamis melalui JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </footer>
 
     </div>
 
