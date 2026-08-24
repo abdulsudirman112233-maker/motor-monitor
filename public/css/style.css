@@ -216,6 +216,7 @@ body {
     flex-direction: column;
     position: relative;
     overflow: hidden;
+    height: fit-content;
 }
 
 .map-header-bar {
@@ -296,9 +297,9 @@ body {
 
 #map {
     width: 100%;
-    height: 100%;
-    min-height: 480px;
-    flex: 1;
+    height: 380px;
+    min-height: 320px;
+    max-height: 420px;
     z-index: 1;
     background: #0d1117;
 }
