@@ -9,7 +9,12 @@ class TelemetryViewer {
     }
 
     updateSpeedometer(speedKmh) {
-        const speedVal = Math.max(0, Math.min(speedKmh || 0, this.maxSpeedMeter));
+        let speedVal = Number(speedKmh) || 0;
+        // Filter Deadband Satelit GPS: Kecepatan < 2.5 km/h adalah noise/drift satelit saat motor diam
+        if (speedVal < 2.5) {
+            speedVal = 0;
+        }
+        speedVal = Math.max(0, Math.min(speedVal, this.maxSpeedMeter));
         
         // Update Teks Angka
         const speedEl = document.getElementById('speedNumber');
@@ -29,7 +34,7 @@ class TelemetryViewer {
     updateTelemetryCards(telemetry, status) {
         if (!telemetry) return;
 
-        // 1. Update Speedometer
+        // 1. Update Speedometer (Dengan Filter Jitter GPS)
         this.updateSpeedometer(telemetry.speed);
 
         // 2. Satelit GPS
@@ -65,14 +70,18 @@ class TelemetryViewer {
         // 6. Status Kontak & Mesin
         const engineStatusEl = document.getElementById('statEngineRunning');
         if (engineStatusEl) {
-            if (status && status.engine_locked) {
-                engineStatusEl.textContent = 'CUT-OFF (TERPUTUS)';
+            const isLocked = status && (status.engine_locked || status.lock_engine);
+            const speed = Number(telemetry.speed) || 0;
+            const isRunning = telemetry.engine_running === true;
+
+            if (isLocked) {
+                engineStatusEl.textContent = 'CUT-OFF (MATI)';
                 engineStatusEl.style.color = 'var(--accent-red)';
-            } else if (telemetry.speed > 2.0) {
+            } else if (isRunning || speed >= 3.5) {
                 engineStatusEl.textContent = 'BERJALAN (ON)';
                 engineStatusEl.style.color = 'var(--accent-green)';
             } else {
-                engineStatusEl.textContent = 'STANDBY / IDLE';
+                engineStatusEl.textContent = 'MATI (OFF)';
                 engineStatusEl.style.color = 'var(--text-secondary)';
             }
         }

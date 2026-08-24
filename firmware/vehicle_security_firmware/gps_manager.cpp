@@ -49,7 +49,10 @@ void GPSManager::update() {
     }
     
     if (_tinyGps.speed.isValid()) {
-        _currentData.speedKmh = _tinyGps.speed.kmph();
+        float spd = _tinyGps.speed.kmph();
+        // Filter Deadband Satelit GPS: Kecepatan < 2.5 km/h adalah noise/drift satelit saat motor diam
+        if (spd < 2.5f) spd = 0.0f;
+        _currentData.speedKmh = spd;
     } else {
         _currentData.speedKmh = 0.0;
     }
