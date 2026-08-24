@@ -7,11 +7,11 @@ ActuatorManager::ActuatorManager(uint8_t relayPin, uint8_t buzzerPin)
 }
 
 void ActuatorManager::begin() {
-    // Relay Active LOW Standar Optocoupler (Sangat Stabil & Respon Cepat):
-    // HIGH = Relay Nonaktif / OFF (Mesin Menyala Normal)
-    // LOW  = Relay Aktif / ON (Mesin Terputus / Engine Cut-Off)
+    // Mode Kontak Pengapian NO (Relay ON saat Normal, Relay OFF saat Matikan Mesin):
+    // LOW  = Relay ON  (Koil Aktif / Lampu Nyala -> Mesin Normal Siap Jalan)
+    // HIGH = Relay OFF (Koil Mati  / Lampu Mati  -> Mesin Terputus / Cut-Off)
     pinMode(_relayPin, OUTPUT);
-    digitalWrite(_relayPin, HIGH); // Default: Mesin normal saat awal dinyalakan
+    digitalWrite(_relayPin, LOW); // Default: Relay ON (Koil aktif agar mesin bisa hidup)
     _isEngineLocked = false;
 
     // Buzzer pin ke basis transistor 2N2222: HIGH = Buzzer ON, LOW = Buzzer OFF
@@ -19,19 +19,19 @@ void ActuatorManager::begin() {
     digitalWrite(_buzzerPin, LOW);
     _buzzerState = false;
 
-    Serial.println(F("[ACTUATOR] Relay (Active LOW Standar) & Buzzer siap dioperasikan."));
+    Serial.println(F("[ACTUATOR] Relay (Normal=ON, Matikan=OFF) & Buzzer siap dioperasikan."));
 }
 
 void ActuatorManager::setEngineLocked(bool lock) {
     _isEngineLocked = lock;
     if (_isEngineLocked) {
-        // Cut-off pengapian (Tarik Koil Relay: LOW = Aktif)
-        digitalWrite(_relayPin, LOW);
-        Serial.println(F("[ACTUATOR] >>> ENGINE LOCKED / CUT-OFF DIAKTIFKAN (RELAY ON) <<<"));
-    } else {
-        // Pulihkan pengapian (Lepas Koil Relay: HIGH = Nonaktif)
+        // MATIKAN MESIN: Matikan daya koil relay (Relay OFF / Pin HIGH)
         digitalWrite(_relayPin, HIGH);
-        Serial.println(F("[ACTUATOR] >>> ENGINE UNLOCKED / PENGAPIAN NORMAL (RELAY OFF) <<<"));
+        Serial.println(F("[ACTUATOR] >>> MATIKAN MESIN: RELAY MENJADI OFF (LAMPU RELAY MATI) <<<"));
+    } else {
+        // RESTORE / HIDUPKAN MESIN: Aktifkan koil relay (Relay ON / Pin LOW)
+        digitalWrite(_relayPin, LOW);
+        Serial.println(F("[ACTUATOR] >>> RESTORE MESIN: RELAY MENJADI ON (LAMPU RELAY NYALA) <<<"));
     }
 }
 
