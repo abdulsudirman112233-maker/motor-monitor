@@ -25,10 +25,13 @@ const APP_CONFIG = {
         DEFAULT_GEOFENCE_RADIUS: 20, // Radius Pagar Virtual (20 Meter)
         MAX_POLYLINE_POINTS: 500,
 
+        // Google Maps API Key Resmi Pengguna
+        GOOGLE_MAPS_API_KEY: "AIzaSyDKPhrPwNln47IuXVSGfWVcWrYVLcKVd9k",
+
         // URL Google Maps Tiles Resmi (Roadmap, Satellite Hybrid, Traffic, Dark)
-        TILE_LAYER_GOOGLE_ROADMAP: "https://mt{s}.google.com/vt/lyrs=m&hl=id&gl=ID&x={x}&y={y}&z={z}",
-        TILE_LAYER_GOOGLE_SATELLITE: "https://mt{s}.google.com/vt/lyrs=y&hl=id&gl=ID&x={x}&y={y}&z={z}", // Satelit + Label Jalan
-        TILE_LAYER_GOOGLE_TRAFFIC: "https://mt{s}.google.com/vt/lyrs=m,traffic&hl=id&gl=ID&x={x}&y={y}&z={z}", // Peta Jalan + Live Traffic
+        TILE_LAYER_GOOGLE_ROADMAP: "https://mt{s}.google.com/vt/lyrs=m&hl=id&gl=ID&x={x}&y={y}&z={z}&key=AIzaSyDKPhrPwNln47IuXVSGfWVcWrYVLcKVd9k",
+        TILE_LAYER_GOOGLE_SATELLITE: "https://mt{s}.google.com/vt/lyrs=y&hl=id&gl=ID&x={x}&y={y}&z={z}&key=AIzaSyDKPhrPwNln47IuXVSGfWVcWrYVLcKVd9k", // Satelit + Label Jalan
+        TILE_LAYER_GOOGLE_TRAFFIC: "https://mt{s}.google.com/vt/lyrs=m,traffic&hl=id&gl=ID&x={x}&y={y}&z={z}&key=AIzaSyDKPhrPwNln47IuXVSGfWVcWrYVLcKVd9k", // Peta Jalan + Live Traffic
         TILE_LAYER_DARK: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
     },
 

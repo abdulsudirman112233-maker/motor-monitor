@@ -251,12 +251,37 @@ class MapController {
 
     _reverseGeocode(lat, lng) {
         const now = Date.now();
-        if (this._lastGeocodeTime && now - this._lastGeocodeTime < 8000) return;
+        if (this._lastGeocodeTime && now - this._lastGeocodeTime < 6000) return;
         this._lastGeocodeTime = now;
 
         const addressEl = document.getElementById('addressDisplay');
         if (!addressEl) return;
 
+        const apiKey = (APP_CONFIG.MAP && APP_CONFIG.MAP.GOOGLE_MAPS_API_KEY) ? APP_CONFIG.MAP.GOOGLE_MAPS_API_KEY : '';
+
+        // 1. Coba Google Maps Geocoding API Resmi (Sangat Akurat untuk Wilayah Indonesia)
+        if (apiKey && apiKey.startsWith('AIzaSy')) {
+            const googleUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}&language=id`;
+            fetch(googleUrl)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.results && data.results.length > 0) {
+                        const formattedAddress = data.results[0].formatted_address;
+                        addressEl.innerHTML = `<i class="fa-solid fa-location-dot" style="color: var(--accent-green);"></i> <span>${formattedAddress}</span>`;
+                        addressEl.title = formattedAddress;
+                        return;
+                    }
+                    this._fallbackNominatimGeocode(lat, lng, addressEl);
+                })
+                .catch(() => {
+                    this._fallbackNominatimGeocode(lat, lng, addressEl);
+                });
+        } else {
+            this._fallbackNominatimGeocode(lat, lng, addressEl);
+        }
+    }
+
+    _fallbackNominatimGeocode(lat, lng, addressEl) {
         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
             .then(res => res.json())
             .then(data => {
