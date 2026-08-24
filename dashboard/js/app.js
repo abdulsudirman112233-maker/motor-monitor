@@ -147,6 +147,17 @@ class App {
             });
         }
 
+        // Dukungan Scroll Samping (Mouse Wheel / Touchpad) untuk Toolbar Peta di Laptop
+        const mapActionsBar = document.querySelector('.map-actions');
+        if (mapActionsBar) {
+            mapActionsBar.addEventListener('wheel', (e) => {
+                if (e.deltaY !== 0) {
+                    e.preventDefault();
+                    mapActionsBar.scrollLeft += e.deltaY;
+                }
+            }, { passive: false });
+        }
+
         // Tombol Buka di Google Maps Real
         const btnOpenMaps = document.getElementById('btnOpenGoogleMaps');
         if (btnOpenMaps) {
