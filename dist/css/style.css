@@ -82,7 +82,7 @@ body {
     height: auto;
     padding: 16px;
     gap: 16px;
-    max-width: 1920px;
+    max-width: 1400px;
     margin: 0 auto;
 }
 
@@ -91,31 +91,31 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 24px;
+    padding: 12px 20px;
     flex-shrink: 0;
 }
 
 .brand-section {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 14px;
 }
 
 .brand-logo {
-    width: 44px;
-    height: 44px;
+    width: 42px;
+    height: 42px;
     border-radius: var(--radius-sm);
     background: linear-gradient(135deg, #00f0ff, #7928ca);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    font-size: 20px;
     color: #fff;
     box-shadow: 0 0 20px var(--primary-glow);
 }
 
 .brand-text h1 {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 700;
     letter-spacing: -0.02em;
     background: linear-gradient(90deg, #fff, #a5b4fc);
@@ -124,7 +124,7 @@ body {
 }
 
 .brand-text p {
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     color: var(--text-secondary);
     font-family: var(--font-mono);
 }
@@ -132,17 +132,17 @@ body {
 .nav-status-group {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     flex-wrap: wrap;
 }
 
 .status-badge {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 14px;
+    gap: 6px;
+    padding: 5px 12px;
     border-radius: var(--radius-full);
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     font-weight: 600;
     border: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.03);
@@ -184,9 +184,9 @@ body {
     background: linear-gradient(135deg, rgba(121, 40, 202, 0.2), rgba(0, 240, 255, 0.2));
     border: 1px solid rgba(0, 240, 255, 0.4);
     color: var(--primary);
-    padding: 8px 16px;
+    padding: 7px 14px;
     border-radius: var(--radius-full);
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     font-weight: 600;
     cursor: pointer;
     display: flex;
@@ -201,10 +201,10 @@ body {
     transform: translateY(-1px);
 }
 
-/* Main Dashboard Grid */
+/* Main Dashboard Grid (Kolom Kanan Kompak 380px) */
 .dashboard-grid {
     display: grid;
-    grid-template-columns: 1.1fr 1fr;
+    grid-template-columns: 1fr 380px;
     gap: 16px;
     flex: 1;
     min-height: 0;
@@ -216,6 +216,17 @@ body {
     flex-direction: column;
     gap: 16px;
     min-width: 0;
+    flex: 1;
+}
+
+/* Right Column (Compact Controls & Telemetry) */
+.right-panel-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 380px;
+    max-width: 380px;
+    flex-shrink: 0;
 }
 
 /* Map Section (Compact & Sleek) */
@@ -454,13 +465,13 @@ body {
 
 /* Quick Control Panel Card */
 .control-card {
-    padding: 20px;
+    padding: 16px;
 }
 
 .card-title {
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     font-weight: 700;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -475,11 +486,11 @@ body {
     background: rgba(255, 51, 102, 0.06);
     border: 1px solid rgba(255, 51, 102, 0.2);
     border-radius: var(--radius-md);
-    padding: 16px;
+    padding: 12px 14px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     transition: var(--transition);
 }
 
@@ -490,25 +501,25 @@ body {
 }
 
 .kill-switch-info h3 {
-    font-size: 0.9rem;
+    font-size: 0.84rem;
     font-weight: 700;
     color: #fff;
 }
 .kill-switch-info p {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: var(--text-secondary);
 }
 
 .btn-engine-toggle {
-    padding: 10px 20px;
+    padding: 8px 16px;
     border-radius: var(--radius-sm);
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     border: none;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     transition: var(--transition);
     background: var(--accent-red);
     color: #fff;
@@ -528,27 +539,27 @@ body {
 .action-buttons-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+    gap: 8px;
 }
 
 .btn-action {
-    padding: 12px;
+    padding: 10px 6px;
     border-radius: var(--radius-sm);
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: 0.74rem;
     cursor: pointer;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     transition: var(--transition);
 }
 
 .btn-action i {
-    font-size: 1.2rem;
+    font-size: 1.05rem;
 }
 
 .btn-action:hover {
