@@ -100,43 +100,8 @@
                 <div id="map"></div>
             </section>
 
-            <!-- RIGHT COLUMN: SPEEDOMETER, CONTROLS & TELEMETRY -->
+            <!-- RIGHT COLUMN: CONTROLS, GEOFENCE & TELEMETRY -->
             <aside class="right-panel-wrapper">
-                
-                <!-- SPEEDOMETER HUD CARD -->
-                <div class="speedometer-card glass-panel">
-                    <div class="speed-dial-container">
-                        <svg class="speed-svg" viewBox="0 0 220 140">
-                            <defs>
-                                <linearGradient id="speedGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stop-color="#00f0ff" />
-                                    <stop offset="60%" stop-color="#ffab00" />
-                                    <stop offset="100%" stop-color="#ff3366" />
-                                </linearGradient>
-                            </defs>
-                            <!-- Background Arc -->
-                            <path class="speed-meter-bg" d="M 20 110 A 90 90 0 0 1 200 110" />
-                            <!-- Progress Arc -->
-                            <path class="speed-meter-progress" id="speedMeterProgress" d="M 20 110 A 90 90 0 0 1 200 110" />
-                        </svg>
-
-                        <div class="speed-value-display">
-                            <span class="speed-number" id="speedNumber">0</span>
-                            <span class="speed-unit">KM / JAM</span>
-                        </div>
-                    </div>
-
-                    <div class="speed-meta-row">
-                        <div class="speed-meta-item">
-                            <span>KONDISI MESIN</span>
-                            <strong id="statEngineRunning" style="color: var(--text-secondary);">STANDBY</strong>
-                        </div>
-                        <div class="speed-meta-item">
-                            <span>STATUS GETARAN</span>
-                            <strong id="statVibration" style="color: var(--accent-green);">STABIL (AMAN)</strong>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- QUICK CONTROLS CARD -->
                 <div class="control-card glass-panel">
@@ -253,23 +218,33 @@
 
                     <div class="stats-grid">
                         <div class="stat-item">
-                            <div class="stat-label"><i class="fa-solid fa-satellite"></i> Satelit GPS</div>
-                            <div class="stat-value" id="statSatellites">9 Sats (1.1 HDOP)</div>
+                            <div class="stat-label"><i class="fa-solid fa-gauge-high"></i> Kecepatan</div>
+                            <div class="stat-value"><span id="speedNumber">0</span> <span style="font-size: 0.75rem; color: var(--text-secondary);">km/h</span></div>
                         </div>
 
                         <div class="stat-item">
-                            <div class="stat-label"><i class="fa-solid fa-tower-cell"></i> Sinyal GSM</div>
-                            <div class="stat-value" id="statGsmSignal">83% (CSQ 26)</div>
+                            <div class="stat-label"><i class="fa-solid fa-key"></i> Kondisi Mesin</div>
+                            <div class="stat-value" id="statEngineRunning" style="color: var(--text-secondary); font-size: 0.95rem;">MATI (OFF)</div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-label"><i class="fa-solid fa-bell"></i> Status Getaran</div>
+                            <div class="stat-value" id="statVibration" style="color: var(--accent-green); font-size: 0.92rem;">STABIL (AMAN)</div>
                         </div>
 
                         <div class="stat-item">
                             <div class="stat-label"><i class="fa-solid fa-car-battery"></i> Tegangan Aki</div>
-                            <div class="stat-value" id="statBattery">12.6 V (ACCU_12V)</div>
+                            <div class="stat-value" id="statBattery">12.6 V</div>
                         </div>
 
                         <div class="stat-item">
-                            <div class="stat-label"><i class="fa-solid fa-compass"></i> Heading / Arah</div>
-                            <div class="stat-value" id="statHeading">45° (NE)</div>
+                            <div class="stat-label"><i class="fa-solid fa-satellite"></i> Satelit GPS</div>
+                            <div class="stat-value" id="statSatellites">0 Sats</div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-label"><i class="fa-solid fa-tower-cell"></i> Sinyal GSM</div>
+                            <div class="stat-value" id="statGsmSignal">0%</div>
                         </div>
                     </div>
                 </div>
