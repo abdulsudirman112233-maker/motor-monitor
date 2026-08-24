@@ -168,6 +168,10 @@ bool FirebaseSyncClient::fetchControlCommands(ControlCommands &cmdsOut) {
             cmdsOut.findVehicle = doc["find_vehicle"] | false;
             cmdsOut.emergencySmsRequest = doc["emergency_sms_request"] | false;
             cmdsOut.resetAlarm = doc["reset_alarm"] | false;
+            cmdsOut.geofenceRadius = doc["geofence_radius"] | 20.0f;
+            cmdsOut.geofenceEnabled = doc["geofence_enabled"] | true;
+            cmdsOut.anchorLat = doc["anchor_lat"] | 0.0;
+            cmdsOut.anchorLng = doc["anchor_lng"] | 0.0;
             cmdsOut.lastCommandTime = doc["last_command_time"] | 0;
             return true;
         }

@@ -100,8 +100,25 @@ void processIncomingSMS() {
         actuatorManager.triggerFinderChirp();
         reply = "[IoT KENDARAAN] Buzzer pencarian dibunyikan (3x Chirp).";
     } 
+    else if (cmd.startsWith("#JARAK") || cmd.startsWith("#RADIUS") || cmd.startsWith("#GEOFENCE")) {
+        int spaceIdx = cmd.indexOf(' ');
+        if (spaceIdx != -1) {
+            String valStr = cmd.substring(spaceIdx + 1);
+            valStr.trim();
+            float newRadius = valStr.toFloat();
+            if (newRadius >= 5.0f && newRadius <= 10000.0f) {
+                securitySystem.setGeofenceRadius(newRadius);
+                reply = "[IoT GEOFENCE] Batas radius aman berhasil disetel ke: " + String(newRadius, 0) + " Meter.";
+                firebaseClient.pushLogEvent("SMS_GEOFENCE", "Batas radius geofence diubah via SMS menjadi " + String(newRadius, 0) + "m", gpsManager.getLatitude(), gpsManager.getLongitude(), gpsManager.getSpeed());
+            } else {
+                reply = "[IoT GEOFENCE] Nilai radius tidak valid. Masukkan angka antara 5 s/d 10000 meter. Contoh: #JARAK 50";
+            }
+        } else {
+            reply = "[IoT GEOFENCE] Format: #JARAK <meter>. Contoh: #JARAK 50 (untuk 50 meter)";
+        }
+    } 
     else {
-        reply = "[IoT KENDARAAN] Perintah tidak dikenali. Ketik format:\n#KUNCI\n#BUKA\n#MATIKAN\n#HIDUPKAN\n#LOKASI\n#STATUS\n#BUNYI";
+        reply = "[IoT KENDARAAN] Perintah tidak dikenali. Ketik format:\n#KUNCI\n#BUKA\n#MATIKAN\n#HIDUPKAN\n#JARAK <meter>\n#LOKASI\n#STATUS\n#BUNYI";
     }
 
     if (reply.length() > 0) {
@@ -184,6 +201,14 @@ void processWebControls() {
                 firebaseClient.pushLogEvent("SOS_SMS_FAILED", "Gagal kirim SMS: Cek pulsa aktif atau catu daya SIM800L", lat, lng, gpsManager.getSpeed());
             }
             firebaseClient.acknowledgeCommand("emergency_sms_request");
+        }
+
+        // 7. Update Batas Radius Geofence Dinamis dari Web Dashboard / Cloud
+        if (cmds.geofenceRadius > 0 && cmds.geofenceRadius != securitySystem.getGeofenceRadius()) {
+            Serial.print(F("[WEB CONTROL] Batas Radius Geofence Diubah ke: "));
+            Serial.print(cmds.geofenceRadius);
+            Serial.println(F(" Meter"));
+            securitySystem.setGeofenceRadius(cmds.geofenceRadius);
         }
     }
 }

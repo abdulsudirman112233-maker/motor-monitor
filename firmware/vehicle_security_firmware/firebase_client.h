@@ -19,6 +19,10 @@ struct ControlCommands {
     bool findVehicle;
     bool emergencySmsRequest;
     bool resetAlarm;
+    float geofenceRadius;
+    bool geofenceEnabled;
+    double anchorLat;
+    double anchorLng;
     uint32_t lastCommandTime;
 };
 

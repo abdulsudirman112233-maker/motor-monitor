@@ -202,6 +202,9 @@ class App {
                             this.status.alarm_active
                         );
                         
+                        // Perbarui Jarak Real-Time Geofence
+                        this.controls.updateLiveDistance(data.latitude, data.longitude);
+
                         this.telemetryViewer.updateTelemetryCards(data, this.status);
                     }
                 });
@@ -219,7 +222,25 @@ class App {
                     }
                 });
 
-                // 3. Listener Riwayat Log Real-Time
+                // 3. Listener Kontrol & Pembatasan Jarak Geofence Real-Time
+                vehicleRef.child('controls').on('value', snapshot => {
+                    const ctrlData = snapshot.val();
+                    if (ctrlData) {
+                        if (ctrlData.geofence_radius && ctrlData.geofence_radius !== this.controls.geofenceRadius) {
+                            this.controls.setGeofenceRadius(ctrlData.geofence_radius, false);
+                        }
+                        if (ctrlData.geofence_enabled !== undefined && ctrlData.geofence_enabled !== this.controls.geofenceEnabled) {
+                            this.controls.setGeofenceEnabled(ctrlData.geofence_enabled);
+                        }
+                        if (ctrlData.anchor_lat && ctrlData.anchor_lng) {
+                            this.controls.anchorLat = ctrlData.anchor_lat;
+                            this.controls.anchorLng = ctrlData.anchor_lng;
+                            this.mapController.setGeofence(ctrlData.anchor_lat, ctrlData.anchor_lng, this.controls.geofenceRadius);
+                        }
+                    }
+                });
+
+                // 4. Listener Riwayat Log Real-Time
                 vehicleRef.child('logs').limitToLast(20).on('child_added', snapshot => {
                     const logData = snapshot.val();
                     if (logData) {

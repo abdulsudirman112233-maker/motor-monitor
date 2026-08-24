@@ -177,6 +177,76 @@
                     </div>
                 </div>
 
+                <!-- GEOFENCE & DISTANCE LIMITER CARD -->
+                <div class="geofence-card glass-panel" id="geofenceControlCard">
+                    <div class="card-title">
+                        <span><i class="fa-solid fa-draw-polygon" style="color: #c084fc;"></i> PEMBATASAN JARAK (GEOFENCE)</span>
+                        <label class="switch-toggle" title="Aktifkan/Nonaktifkan Pagar Virtual">
+                            <input type="checkbox" id="toggleGeofenceEnabled" checked>
+                            <span class="slider-round"></span>
+                        </label>
+                    </div>
+
+                    <!-- Live Distance from Center -->
+                    <div class="geofence-status-banner" id="geofenceStatusBanner">
+                        <div class="geofence-status-icon">
+                            <i class="fa-solid fa-shield-halved" id="geofenceStatusIcon"></i>
+                        </div>
+                        <div class="geofence-status-details">
+                            <div class="geofence-status-title" id="geofenceStatusText">PAGAR VIRTUAL AKTIF (AMAN)</div>
+                            <div class="geofence-distance-sub">
+                                Jarak dari Parkir: <strong id="liveGeofenceDistance" style="color: var(--primary);">0.0 m</strong> / Batas: <span id="displayGeofenceLimit" style="color: #e9d5ff;">20 m</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Distance Progress Bar -->
+                    <div class="geofence-progress-container">
+                        <div class="geofence-progress-bar" id="geofenceProgressBar" style="width: 0%;"></div>
+                    </div>
+
+                    <!-- Radius Slider & Numeric Input -->
+                    <div class="radius-control-box">
+                        <div class="radius-header">
+                            <label for="geofenceRadiusSlider"><i class="fa-solid fa-ruler-combined"></i> Atur Batas Radius Aman:</label>
+                            <div class="radius-input-group">
+                                <input type="number" id="geofenceRadiusInput" min="5" max="5000" step="5" value="20" class="radius-number-input">
+                                <span class="radius-unit">Meter</span>
+                            </div>
+                        </div>
+                        <input type="range" id="geofenceRadiusSlider" min="10" max="500" step="5" value="20" class="radius-range-slider">
+                        <div class="range-scale-labels">
+                            <span>10m</span>
+                            <span>100m</span>
+                            <span>250m</span>
+                            <span>500m</span>
+                        </div>
+                    </div>
+
+                    <!-- Quick Preset Buttons -->
+                    <div class="geofence-presets-row">
+                        <button class="btn-preset active" data-radius="20"><i class="fa-solid fa-parking"></i> 20m (Parkir)</button>
+                        <button class="btn-preset" data-radius="50">50m</button>
+                        <button class="btn-preset" data-radius="100">100m</button>
+                        <button class="btn-preset" data-radius="250">250m</button>
+                        <button class="btn-preset" data-radius="500">500m</button>
+                        <button class="btn-preset" data-radius="1000">1 km</button>
+                    </div>
+
+                    <!-- Anchor Point Action & Auto-Cutoff Check -->
+                    <div class="geofence-actions-box">
+                        <button class="btn-set-anchor" id="btnSetAnchorPoint">
+                            <i class="fa-solid fa-location-crosshairs"></i> Tetapkan Titik Parkir Saat Ini
+                        </button>
+                        <div class="auto-cutoff-checkbox-row">
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="chkAutoCutoffGeofence" checked>
+                                <span class="checkbox-label"><i class="fa-solid fa-bolt-lightning" style="color: var(--accent-amber);"></i> Matikan Mesin Otomatis jika keluar radius</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- TELEMETRY SENSORS STATS CARD -->
                 <div class="telemetry-stats-card glass-panel">
                     <div class="card-title">

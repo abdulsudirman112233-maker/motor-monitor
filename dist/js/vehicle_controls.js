@@ -11,12 +11,21 @@ class VehicleControls {
         this.audioContext = null;
         this.sirenOscillator = null;
         this.isSirenPlaying = false;
+
+        // Properti Sistem Pembatasan Jarak / Geofence
+        this.geofenceRadius = 20;
+        this.geofenceEnabled = true;
+        this.autoCutoffGeofence = true;
+        this.anchorLat = null;
+        this.anchorLng = null;
+        this._geofenceDebounceTimer = null;
     }
 
     init() {
         this._bindUIEvents();
+        this._bindGeofenceControls();
         this._initAudio();
-        console.log('[CONTROLS] Vehicle Controls Initialized.');
+        console.log('[CONTROLS] Vehicle Controls & Geofence System Initialized.');
     }
 
     _initAudio() {
@@ -231,6 +240,236 @@ class VehicleControls {
 
         this._dispatchFirebaseCommand('reset_alarm', true);
         this._showToast('Alarm telah direset.', 'success');
+    }
+
+    // =========================================================================
+    // METODE SISTEM INPUTAN PEMBATASAN JARAK / GEOFENCE RADIUS
+    // =========================================================================
+    _bindGeofenceControls() {
+        // 1. Slider Radius
+        const slider = document.getElementById('geofenceRadiusSlider');
+        if (slider) {
+            slider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                this.setGeofenceRadius(val, false);
+            });
+            slider.addEventListener('change', (e) => {
+                const val = parseInt(e.target.value);
+                this.setGeofenceRadius(val, true);
+            });
+        }
+
+        // 2. Input Angka Langsung (Number Input)
+        const numInput = document.getElementById('geofenceRadiusInput');
+        if (numInput) {
+            numInput.addEventListener('change', (e) => {
+                let val = parseInt(e.target.value);
+                if (isNaN(val) || val < 5) val = 5;
+                if (val > 5000) val = 5000;
+                this.setGeofenceRadius(val, true);
+            });
+        }
+
+        // 3. Tombol-Tombol Preset Jarak (20m, 50m, 100m, 250m, 500m, 1000m)
+        const presetBtns = document.querySelectorAll('.btn-preset');
+        presetBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const rad = parseInt(btn.dataset.radius);
+                if (rad) {
+                    this.setGeofenceRadius(rad, true);
+                    presetBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                }
+            });
+        });
+
+        // 4. Toggle Saklar Geofence Aktif / Nonaktif
+        const toggleSwitch = document.getElementById('toggleGeofenceEnabled');
+        if (toggleSwitch) {
+            toggleSwitch.addEventListener('change', (e) => {
+                this.setGeofenceEnabled(e.target.checked);
+            });
+        }
+
+        // 5. Tombol Tetapkan Titik Parkir Saat Ini (Set Anchor Point)
+        const btnAnchor = document.getElementById('btnSetAnchorPoint');
+        if (btnAnchor) {
+            btnAnchor.addEventListener('click', () => {
+                const currentLat = this.mapController.lastLat;
+                const currentLng = this.mapController.lastLng;
+                if (currentLat && currentLng && Math.abs(currentLat) > 0.001) {
+                    this.setAnchorPoint(currentLat, currentLng);
+                    this.playChirp(2);
+                    this._showToast(`Titik pusat geofence ditetapkan di: ${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`, 'success');
+                } else {
+                    this._showToast('Menunggu sinyal satelit GPS real dari kendaraan...', 'warning');
+                }
+            });
+        }
+
+        // 6. Checkbox Auto Cut-Off saat Melanggar Radius
+        const chkCutoff = document.getElementById('chkAutoCutoffGeofence');
+        if (chkCutoff) {
+            chkCutoff.addEventListener('change', (e) => {
+                this.autoCutoffGeofence = e.target.checked;
+                this._dispatchFirebaseCommand('auto_cutoff_geofence', this.autoCutoffGeofence);
+                this._showToast(`Auto Cut-off Keluar Radius: ${this.autoCutoffGeofence ? 'AKTIF' : 'NONAKTIF'}`, 'info');
+            });
+        }
+    }
+
+    setGeofenceRadius(radiusMeters, dispatchToCloud = true) {
+        this.geofenceRadius = radiusMeters;
+
+        // 1. Update UI Elements
+        const slider = document.getElementById('geofenceRadiusSlider');
+        const numInput = document.getElementById('geofenceRadiusInput');
+        const displayLimit = document.getElementById('displayGeofenceLimit');
+
+        if (numInput && parseInt(numInput.value) !== radiusMeters) {
+            numInput.value = radiusMeters;
+        }
+        if (slider && parseInt(slider.value) !== Math.min(radiusMeters, 500)) {
+            slider.value = Math.min(radiusMeters, 500);
+        }
+        if (displayLimit) {
+            displayLimit.innerText = radiusMeters >= 1000 ? 
+                `${(radiusMeters / 1000).toFixed(1)} km` : `${radiusMeters} m`;
+        }
+
+        // Highlight preset button yang cocok
+        const presetBtns = document.querySelectorAll('.btn-preset');
+        presetBtns.forEach(btn => {
+            if (parseInt(btn.dataset.radius) === radiusMeters) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        // 2. Update Lingkaran Visual di Peta Leaflet
+        if (this.mapController) {
+            this.mapController.setGeofenceRadius(radiusMeters);
+        }
+
+        // 3. Update Status Jarak Real-Time
+        if (this.mapController && this.mapController.lastLat) {
+            this.updateLiveDistance(this.mapController.lastLat, this.mapController.lastLng);
+        }
+
+        // 4. Kirim ke Firebase Cloud RTDB (Debounced)
+        if (dispatchToCloud) {
+            if (this._geofenceDebounceTimer) clearTimeout(this._geofenceDebounceTimer);
+            this._geofenceDebounceTimer = setTimeout(() => {
+                this._dispatchFirebaseCommand('geofence_radius', radiusMeters);
+                this._showToast(`Batas radius aman disetel ke: ${radiusMeters} Meter`, 'info');
+            }, 400);
+        }
+    }
+
+    setGeofenceEnabled(enabled) {
+        this.geofenceEnabled = enabled;
+
+        const banner = document.getElementById('geofenceStatusBanner');
+        const statusText = document.getElementById('geofenceStatusText');
+        const toggle = document.getElementById('toggleGeofenceEnabled');
+        
+        if (toggle && toggle.checked !== enabled) {
+            toggle.checked = enabled;
+        }
+
+        if (this.mapController) {
+            this.mapController.toggleGeofence(enabled);
+        }
+
+        if (banner) {
+            banner.classList.toggle('disabled', !enabled);
+        }
+        if (statusText) {
+            statusText.innerText = enabled ? 'PAGAR VIRTUAL AKTIF (AMAN)' : 'PAGAR VIRTUAL DINONAKTIFKAN';
+        }
+
+        this._dispatchFirebaseCommand('geofence_enabled', enabled);
+        this._showToast(`Pagar Virtual Geofence: ${enabled ? 'DIAKTIFKAN' : 'DINONAKTIFKAN'}`, enabled ? 'success' : 'warning');
+    }
+
+    setAnchorPoint(lat, lng) {
+        this.anchorLat = lat;
+        this.anchorLng = lng;
+
+        if (this.mapController) {
+            this.mapController.setGeofence(lat, lng, this.geofenceRadius);
+        }
+
+        this._dispatchFirebaseCommand('anchor_lat', lat);
+        this._dispatchFirebaseCommand('anchor_lng', lng);
+        this.updateLiveDistance(lat, lng);
+    }
+
+    calculateDistanceMeters(lat1, lon1, lat2, lon2) {
+        if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+        const R = 6371000; // Radius bumi dalam meter
+        const dLat = (lat2 - lat1) * (Math.PI / 180);
+        const dLon = (lon2 - lon1) * (Math.PI / 180);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    updateLiveDistance(currentLat, currentLng) {
+        if (!currentLat || !currentLng || isNaN(currentLat) || isNaN(currentLng)) return;
+
+        // Jika anchor belum pernah di-set, gunakan lokasi awal
+        if (!this.anchorLat || !this.anchorLng) {
+            this.anchorLat = currentLat;
+            this.anchorLng = currentLng;
+            if (this.mapController) {
+                this.mapController.setGeofence(currentLat, currentLng, this.geofenceRadius);
+            }
+        }
+
+        const dist = this.calculateDistanceMeters(this.anchorLat, this.anchorLng, currentLat, currentLng);
+        const distEl = document.getElementById('liveGeofenceDistance');
+        const banner = document.getElementById('geofenceStatusBanner');
+        const icon = document.getElementById('geofenceStatusIcon');
+        const statusText = document.getElementById('geofenceStatusText');
+        const progBar = document.getElementById('geofenceProgressBar');
+
+        if (distEl) {
+            distEl.innerText = dist >= 1000 ? `${(dist / 1000).toFixed(2)} km` : `${dist.toFixed(1)} m`;
+        }
+
+        // Hitung persentase progress bar
+        const percent = Math.min(100, (dist / this.geofenceRadius) * 100);
+        if (progBar) {
+            progBar.style.width = `${percent}%`;
+        }
+
+        // Cek Pelanggaran Batas Radius (Breach)
+        if (this.geofenceEnabled && dist > this.geofenceRadius) {
+            if (banner) banner.classList.add('breach');
+            if (icon) icon.className = 'fa-solid fa-triangle-exclamation';
+            if (statusText) statusText.innerHTML = '<span style="color: var(--accent-red);">⚠️ KELUAR DARI RADIUS AMAN!</span>';
+            if (progBar) progBar.classList.add('danger');
+
+            // Auto-Cutoff jika diaktifkan
+            const btnEngine = document.getElementById('btnToggleEngine');
+            const isCurrentlyLocked = btnEngine && btnEngine.dataset.locked === 'true';
+            if (this.autoCutoffGeofence && !isCurrentlyLocked) {
+                console.warn('[GEOFENCE AUTO-CUTOFF] Motor keluar radius! Mematikan mesin otomatis.');
+                this.setEngineLock(true);
+                this.triggerPanicAlarm();
+            }
+        } else {
+            if (banner) banner.classList.remove('breach');
+            if (icon) icon.className = 'fa-solid fa-shield-halved';
+            if (statusText && this.geofenceEnabled) {
+                statusText.innerText = 'PAGAR VIRTUAL AKTIF (AMAN)';
+            }
+            if (progBar) progBar.classList.remove('danger');
+        }
     }
 
     _dispatchFirebaseCommand(commandKey, value) {

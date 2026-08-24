@@ -194,6 +194,16 @@ class MapController {
         if (this.geofenceCircle) {
             this.geofenceCircle.setLatLng([centerLat, centerLng]);
             this.geofenceCircle.setRadius(radiusMeters);
+            const label = radiusMeters >= 1000 ? `${(radiusMeters / 1000).toFixed(1)} KM` : `${radiusMeters} Meter`;
+            this.geofenceCircle.bindTooltip(`<i class="fa-solid fa-shield-halved"></i> <b>Pagar Virtual: ${label}</b>`, { direction: 'top' });
+        }
+    }
+
+    setGeofenceRadius(radiusMeters) {
+        if (this.geofenceCircle) {
+            this.geofenceCircle.setRadius(radiusMeters);
+            const label = radiusMeters >= 1000 ? `${(radiusMeters / 1000).toFixed(1)} KM` : `${radiusMeters} Meter`;
+            this.geofenceCircle.bindTooltip(`<i class="fa-solid fa-shield-halved"></i> <b>Pagar Virtual: ${label}</b>`, { direction: 'top' });
         }
     }
 
