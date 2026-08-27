@@ -15,6 +15,10 @@ class MapController {
         this.autoCenter = true;
         this.lastLat = null;
         this.lastLng = null;
+        this.hasLivePosition = false;
+        this.gpsFixLost = false;
+        this.lastAcceptedAt = 0;
+        this.geofenceVisible = true;
     }
 
     init() {
@@ -135,14 +139,46 @@ class MapController {
         }
 
         const newLatLng = [numLat, numLng];
+        const previousLat = this.lastLat;
+        const previousLng = this.lastLng;
+        const displacement = this.hasLivePosition ? this._distanceMeters(previousLat, previousLng, numLat, numLng) : Infinity;
+        const now = Date.now();
+        const elapsedSeconds = this.lastAcceptedAt ? Math.max(0.1, (now - this.lastAcceptedAt) / 1000) : 1;
+        const speedKmh = Number(speed) || 0;
+
+        // Putus garis setelah GPS kehilangan fix. Titik pertama saat reacquire
+        // menjadi awal segmen baru, bukan disambungkan ke posisi stale.
+        const reacquiredFix = this.gpsFixLost;
+        if (reacquiredFix) {
+            this.pathCoordinates = [];
+            if (this.trailPolyline) this.trailPolyline.setLatLngs([]);
+            if (this.vehicleMarker) this.vehicleMarker.setLatLng(newLatLng);
+            this.gpsFixLost = false;
+        }
+
+        // Tolak teleport GPS. Batas mengikuti kecepatan dan waktu sejak titik
+        // terakhir, dengan toleransi minimum 20 meter untuk akurasi konsumen.
+        const plausibleDistance = Math.max(20, (speedKmh / 3.6) * elapsedSeconds * 2.5 + 10);
+        if (this.hasLivePosition && !reacquiredFix && displacement > plausibleDistance && elapsedSeconds < 30) {
+            console.warn(`[MAP] Lompatan GPS ${displacement.toFixed(1)} m ditolak (batas ${plausibleDistance.toFixed(1)} m).`);
+            return;
+        }
+
+        // GPS diam tetap bergeser beberapa meter. Jangan gerakkan marker atau
+        // menambah trail jika speed nol dan perubahan masih dalam radius drift.
+        if (this.hasLivePosition && Number(speed) <= 2.5 && displacement < 5) {
+            return;
+        }
         this.lastLat = numLat;
         this.lastLng = numLng;
+        this.hasLivePosition = true;
+        this.lastAcceptedAt = now;
 
-        // 1. Buat / Geser Marker
+        // 1. Buat / Geser Marker secara Smooth (Sliding Animation)
         if (!this.vehicleMarker) {
             this._createVehicleMarker(newLatLng);
         } else {
-            this.vehicleMarker.setLatLng(newLatLng);
+            this._animateMarkerTo(numLat, numLng, 1000);
         }
 
         // 2. Perbarui Popup
@@ -180,7 +216,9 @@ class MapController {
         }
 
         // 4. Tambahkan ke lintasan
-        this.pathCoordinates.push(newLatLng);
+        if (this.pathCoordinates.length === 0 || displacement >= 2) {
+            this.pathCoordinates.push(newLatLng);
+        }
         if (this.pathCoordinates.length > APP_CONFIG.MAP.MAX_POLYLINE_POINTS) {
             this.pathCoordinates.shift();
         }
@@ -189,7 +227,7 @@ class MapController {
         }
 
         // 5. Auto Center
-        if (this.autoCenter) {
+        if (this.autoCenter && !this._animFrameId) {
             this.map.panTo(newLatLng, { animate: true, duration: 0.5 });
         }
 
@@ -197,28 +235,102 @@ class MapController {
         this._reverseGeocode(numLat, numLng);
     }
 
+    setGpsFixAvailable(available) {
+        if (!available && this.hasLivePosition) {
+            this.gpsFixLost = true;
+            const addressEl = document.getElementById('addressDisplay');
+            if (addressEl) {
+                addressEl.innerHTML = '<span style="color: var(--accent-orange);"><i class="fa-solid fa-satellite-dish fa-spin"></i> GPS kehilangan fix, menunggu posisi baru...</span>';
+            }
+        }
+    }
+
+    _distanceMeters(lat1, lng1, lat2, lng2) {
+        const toRad = value => value * Math.PI / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLng = toRad(lng2 - lng1);
+        const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+        return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    _animateMarkerTo(targetLat, targetLng, duration = 1000) {
+        if (!this.vehicleMarker) return;
+
+        const startLatLng = this.vehicleMarker.getLatLng();
+        const startLat = startLatLng.lat;
+        const startLng = startLatLng.lng;
+
+        const deltaLat = targetLat - startLat;
+        const deltaLng = targetLng - startLng;
+
+        // Jika pergeseran sangat kecil (< 0.1 meter), langsung tetapkan tanpa perulangan animasi
+        if (Math.abs(deltaLat) < 0.000001 && Math.abs(deltaLng) < 0.000001) {
+            this.vehicleMarker.setLatLng([targetLat, targetLng]);
+            return;
+        }
+
+        if (this._animFrameId) {
+            cancelAnimationFrame(this._animFrameId);
+        }
+
+        const startTime = performance.now();
+
+        const animateStep = (currentTime) => {
+            const elapsedTime = currentTime - startTime;
+            const progress = Math.min(elapsedTime / duration, 1.0);
+
+            // Interpolasi Linier Halus
+            const currentLat = startLat + deltaLat * progress;
+            const currentLng = startLng + deltaLng * progress;
+
+            const currLatLng = [currentLat, currentLng];
+            this.vehicleMarker.setLatLng(currLatLng);
+
+            if (this.autoCenter) {
+                this.map.panTo(currLatLng, { animate: false });
+            }
+
+            if (progress < 1.0) {
+                this._animFrameId = requestAnimationFrame(animateStep);
+            } else {
+                this._animFrameId = null;
+            }
+        };
+
+        this._animFrameId = requestAnimationFrame(animateStep);
+    }
+
     setGeofence(centerLat, centerLng, radiusMeters) {
-        if (this.geofenceCircle) {
-            this.geofenceCircle.setLatLng([centerLat, centerLng]);
-            this.geofenceCircle.setRadius(radiusMeters);
-            const label = radiusMeters >= 1000 ? `${(radiusMeters / 1000).toFixed(1)} KM` : `${radiusMeters} Meter`;
+        const lat = Number(centerLat);
+        const lng = Number(centerLng);
+        const radius = Number(radiusMeters);
+        if (this.geofenceCircle && Number.isFinite(lat) && Number.isFinite(lng) &&
+            Math.abs(lat) <= 90 && Math.abs(lng) <= 180 &&
+            Number.isFinite(radius) && radius >= 5 && radius <= 5000) {
+            this.geofenceCircle.setLatLng([lat, lng]);
+            this.geofenceCircle.setRadius(radius);
+            const label = radius >= 1000 ? `${(radius / 1000).toFixed(1)} KM` : `${radius} Meter`;
             this.geofenceCircle.bindTooltip(`<i class="fa-solid fa-shield-halved"></i> <b>Pagar Virtual: ${label}</b>`, { direction: 'top' });
         }
     }
 
     setGeofenceRadius(radiusMeters) {
-        if (this.geofenceCircle) {
-            this.geofenceCircle.setRadius(radiusMeters);
-            const label = radiusMeters >= 1000 ? `${(radiusMeters / 1000).toFixed(1)} KM` : `${radiusMeters} Meter`;
+        const radius = Number(radiusMeters);
+        if (this.geofenceCircle && Number.isFinite(radius) && radius >= 5 && radius <= 5000) {
+            this.geofenceCircle.setRadius(radius);
+            const label = radius >= 1000 ? `${(radius / 1000).toFixed(1)} KM` : `${radius} Meter`;
             this.geofenceCircle.bindTooltip(`<i class="fa-solid fa-shield-halved"></i> <b>Pagar Virtual: ${label}</b>`, { direction: 'top' });
         }
     }
 
     toggleGeofence(visible) {
         if (!this.geofenceCircle) return;
-        if (visible) {
+        this.geofenceVisible = Boolean(visible);
+        if (this.geofenceVisible) {
+            if (this.map.hasLayer(this.geofenceCircle)) return;
             this.geofenceCircle.addTo(this.map);
-        } else {
+        } else if (this.map.hasLayer(this.geofenceCircle)) {
             this.map.removeLayer(this.geofenceCircle);
         }
     }
@@ -251,47 +363,47 @@ class MapController {
 
     _reverseGeocode(lat, lng) {
         const now = Date.now();
-        if (this._lastGeocodeTime && now - this._lastGeocodeTime < 6000) return;
+        if (this._lastGeocodeTime && now - this._lastGeocodeTime < 5000) return;
         this._lastGeocodeTime = now;
 
         const addressEl = document.getElementById('addressDisplay');
         if (!addressEl) return;
 
+        const gmapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
         const apiKey = (APP_CONFIG.MAP && APP_CONFIG.MAP.GOOGLE_MAPS_API_KEY) ? APP_CONFIG.MAP.GOOGLE_MAPS_API_KEY : '';
 
-        // 1. Coba Google Maps Geocoding API Resmi (Sangat Akurat untuk Wilayah Indonesia)
+        // Prioritaskan Google Maps Geocoding API Resmi dengan Pembersihan Alamat Presisi
         if (apiKey && apiKey.startsWith('AIzaSy')) {
             const googleUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}&language=id`;
             fetch(googleUrl)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.results && data.results.length > 0) {
-                        const formattedAddress = data.results[0].formatted_address;
-                        addressEl.innerHTML = `<i class="fa-solid fa-location-dot" style="color: var(--accent-green);"></i> <span>${formattedAddress}</span>`;
+                    if (data.status === 'OK' && data.results && data.results.length > 0) {
+                        let formattedAddress = data.results[0].formatted_address;
+                        // Hapus teks nama wilayah/kelurahan yang tidak akurat jika ada
+                        formattedAddress = formattedAddress
+                            .replace(/, Kanakea Dalam/gi, '')
+                            .replace(/Kanakea Dalam, /gi, '')
+                            .replace(/Kanakea, /gi, '')
+                            .replace(/, Kanakea/gi, '');
+
+                        addressEl.innerHTML = `<i class="fa-solid fa-location-dot" style="color: var(--accent-green);"></i> <span>${formattedAddress}</span> (<a href="${gmapsUrl}" target="_blank" style="color: var(--primary); text-decoration: underline; font-weight: 600;">Lihat di GMaps</a>)`;
                         addressEl.title = formattedAddress;
                         return;
                     }
-                    this._fallbackNominatimGeocode(lat, lng, addressEl);
+                    this._displayExactGmapsLocation(lat, lng, addressEl);
                 })
                 .catch(() => {
-                    this._fallbackNominatimGeocode(lat, lng, addressEl);
+                    this._displayExactGmapsLocation(lat, lng, addressEl);
                 });
         } else {
-            this._fallbackNominatimGeocode(lat, lng, addressEl);
+            this._displayExactGmapsLocation(lat, lng, addressEl);
         }
     }
 
-    _fallbackNominatimGeocode(lat, lng, addressEl) {
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.display_name) {
-                    addressEl.innerHTML = `<i class="fa-solid fa-location-dot" style="color: var(--accent-green);"></i> <span>${data.display_name}</span>`;
-                    addressEl.title = data.display_name;
-                }
-            })
-            .catch(() => {
-                addressEl.innerHTML = `<i class="fa-solid fa-location-dot" style="color: var(--primary);"></i> <span>Titik Koordinat: ${lat.toFixed(6)}, ${lng.toFixed(6)}</span>`;
-            });
+    _displayExactGmapsLocation(lat, lng, addressEl) {
+        const gmapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+        addressEl.innerHTML = `<i class="fa-solid fa-location-dot" style="color: var(--accent-green);"></i> <span>Koordinat Google Maps: <a href="${gmapsUrl}" target="_blank" style="color: var(--primary); text-decoration: underline; font-weight: 600;">${lat.toFixed(6)}, ${lng.toFixed(6)} (Buka di Google Maps)</a></span>`;
+        addressEl.title = `Koordinat Presisi Google Maps: ${lat}, ${lng}`;
     }
 }

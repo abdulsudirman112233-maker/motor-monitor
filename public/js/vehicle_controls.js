@@ -15,10 +15,15 @@ class VehicleControls {
         // Properti Sistem Pembatasan Jarak / Geofence
         this.geofenceRadius = 20;
         this.geofenceEnabled = true;
-        this.autoCutoffGeofence = true;
+        this.autoCutoffGeofence = false;
         this.anchorLat = null;
         this.anchorLng = null;
         this._geofenceDebounceTimer = null;
+        this._breachActionSent = false;
+        this.lastSmsAttemptCounter = null;
+        this.smsRequestPending = false;
+        this.smsButtonOriginalContent = '';
+        this.alarmUiActive = false;
     }
 
     init() {
@@ -159,6 +164,18 @@ class VehicleControls {
                 this.resetTheftAlarm();
             });
         }
+
+        // Tombol modal harus selalu mengirim CUT-OFF eksplisit. Memicu click
+        // tombol utama dapat membalik state dan justru memulihkan mesin.
+        const btnEmergencyKill = document.getElementById('btnEmergencyKillModal');
+        if (btnEmergencyKill) {
+            btnEmergencyKill.addEventListener('click', () => {
+                this.setEngineLock(true);
+                const modal = document.getElementById('emergencyAlertModal');
+                if (modal) modal.classList.remove('active');
+                this._showToast('Perintah cut-off mesin dikirim. Menunggu konfirmasi ESP8266.', 'error');
+            });
+        }
     }
 
     setEngineLock(lockState) {
@@ -168,9 +185,9 @@ class VehicleControls {
         const boxEngine = document.getElementById('engineKillBox');
         if (btnEngine) {
             btnEngine.dataset.locked = lockState ? 'true' : 'false';
-            btnEngine.innerHTML = lockState ? 
-                '<i class="fa-solid fa-key"></i> PULIHKAN MESIN' : 
-                '<i class="fa-solid fa-ban"></i> MATIKAN MESIN';
+            btnEngine.innerHTML = lockState ?
+                '<i class="fa-solid fa-ban"></i> MATIKAN MESIN' :
+                '<i class="fa-solid fa-key"></i> PULIHKAN MESIN';
             btnEngine.className = lockState ? 'btn-engine-toggle unlocked-state' : 'btn-engine-toggle';
         }
         if (boxEngine) {
@@ -198,9 +215,13 @@ class VehicleControls {
         this._showToast(armedState ? 'Sistem Keamanan di-ARM (Siaga)' : 'Sistem Keamanan di-DISARM (Terbuka)', 'info');
     }
 
-    triggerPanicAlarm() {
+    triggerPanicAlarm(dispatchToCloud = true) {
+        if (this.alarmUiActive && !dispatchToCloud) return;
+        this.alarmUiActive = true;
         this.startBrowserSiren();
-        this._dispatchFirebaseCommand('trigger_panic', true);
+        if (dispatchToCloud) {
+            this._dispatchFirebaseCommand('trigger_panic', true);
+        }
         this._showToast('Sirene Darurat Dinyalakan!', 'error');
 
         // Tampilkan Modal Peringatan Darurat
@@ -216,24 +237,60 @@ class VehicleControls {
 
     requestEmergencySMS() {
         const btnSms = document.getElementById('btnRequestSms');
-        const origContent = btnSms ? btnSms.innerHTML : '';
+        this.smsButtonOriginalContent = btnSms ? btnSms.innerHTML : '';
+        this.smsRequestPending = true;
         if (btnSms) {
             btnSms.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> MENGIRIM SMS...';
             btnSms.disabled = true;
         }
 
         this._dispatchFirebaseCommand('emergency_sms_request', true);
-        this._showToast('Permintaan Kirim SMS SOS Berhasil Dikirim ke Cloud Firebase!', 'warning');
+        this._showToast('Permintaan SMS SOS dikirim. Menunggu konfirmasi SIM800L...', 'warning');
 
         setTimeout(() => {
+            if (this.smsRequestPending && btnSms) {
+                this.smsRequestPending = false;
+                btnSms.innerHTML = this.smsButtonOriginalContent;
+                btnSms.disabled = false;
+                this._showToast('SIM800L tidak memberi konfirmasi SMS dalam 35 detik.', 'error');
+            }
+        }, 35000);
+    }
+
+    handleSmsStatus(statusData) {
+        if (!statusData || statusData.sms_attempt_counter === undefined) return;
+        const counter = Number(statusData.sms_attempt_counter);
+        if (!Number.isFinite(counter)) return;
+
+        const counterChanged = this.lastSmsAttemptCounter === null ? counter > 0 : counter !== this.lastSmsAttemptCounter;
+        this.lastSmsAttemptCounter = counter;
+
+        const success = statusData.sms_last_success === true;
+        const type = statusData.sms_last_type || 'SMS';
+        const modalStatus = document.getElementById('modalSmsDeliveryStatus');
+        if (modalStatus && (type === 'ALARM' || type === 'GEOFENCE')) {
+            modalStatus.textContent = success ?
+                `SMS ${type} dikonfirmasi terkirim oleh SIM800L.` :
+                `SMS ${type} gagal. Periksa SIM, sinyal, pulsa, dan catu daya.`;
+            modalStatus.style.color = success ? 'var(--accent-green)' : 'var(--accent-red)';
+        }
+
+        if (counterChanged && this.smsRequestPending && type === 'SOS') {
+            this.smsRequestPending = false;
+            const btnSms = document.getElementById('btnRequestSms');
             if (btnSms) {
-                btnSms.innerHTML = origContent;
+                btnSms.innerHTML = this.smsButtonOriginalContent;
                 btnSms.disabled = false;
             }
-        }, 3500);
+            this._showToast(success ?
+                'SIM800L mengonfirmasi SMS SOS berhasil dikirim.' :
+                'SMS SOS gagal dikirim. Periksa registrasi SIM, sinyal, pulsa, dan supply 4V.',
+                success ? 'success' : 'error');
+        }
     }
 
     resetTheftAlarm() {
+        this.alarmUiActive = false;
         this.stopBrowserSiren();
         const modal = document.getElementById('emergencyAlertModal');
         if (modal) modal.classList.remove('active');
@@ -297,7 +354,7 @@ class VehicleControls {
             btnAnchor.addEventListener('click', () => {
                 const currentLat = this.mapController.lastLat;
                 const currentLng = this.mapController.lastLng;
-                if (currentLat && currentLng && Math.abs(currentLat) > 0.001) {
+                if (this.mapController.hasLivePosition && this._isValidCoordinate(currentLat, currentLng)) {
                     this.setAnchorPoint(currentLat, currentLng);
                     this.playChirp(2);
                     this._showToast(`Titik pusat geofence ditetapkan di: ${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`, 'success');
@@ -319,6 +376,9 @@ class VehicleControls {
     }
 
     setGeofenceRadius(radiusMeters, dispatchToCloud = true) {
+        const parsedRadius = Number(radiusMeters);
+        if (!Number.isFinite(parsedRadius)) return;
+        radiusMeters = Math.round(Math.min(5000, Math.max(5, parsedRadius)));
         this.geofenceRadius = radiusMeters;
 
         // 1. Update UI Elements
@@ -367,12 +427,16 @@ class VehicleControls {
         }
     }
 
-    setGeofenceEnabled(enabled) {
-        this.geofenceEnabled = enabled;
+    setGeofenceEnabled(enabled, dispatchToCloud = true) {
+        this.geofenceEnabled = Boolean(enabled);
+        enabled = this.geofenceEnabled;
 
         const banner = document.getElementById('geofenceStatusBanner');
         const statusText = document.getElementById('geofenceStatusText');
         const toggle = document.getElementById('toggleGeofenceEnabled');
+        const icon = document.getElementById('geofenceStatusIcon');
+        const progBar = document.getElementById('geofenceProgressBar');
+        const distEl = document.getElementById('liveGeofenceDistance');
         
         if (toggle && toggle.checked !== enabled) {
             toggle.checked = enabled;
@@ -382,55 +446,103 @@ class VehicleControls {
             this.mapController.toggleGeofence(enabled);
         }
 
+        const mapToggle = document.getElementById('btnToggleGeofence');
+        if (mapToggle) mapToggle.classList.toggle('active', enabled);
+
         if (banner) {
             banner.classList.toggle('disabled', !enabled);
+            if (!enabled) banner.classList.remove('breach');
         }
         if (statusText) {
             statusText.innerText = enabled ? 'PAGAR VIRTUAL AKTIF (AMAN)' : 'PAGAR VIRTUAL DINONAKTIFKAN';
         }
+        if (!enabled) {
+            if (icon) icon.className = 'fa-solid fa-shield-halved';
+            if (progBar) {
+                progBar.style.width = '0%';
+                progBar.classList.remove('danger');
+            }
+            if (distEl) distEl.innerText = '—';
+            this._breachActionSent = false;
 
-        this._dispatchFirebaseCommand('geofence_enabled', enabled);
-        this._showToast(`Pagar Virtual Geofence: ${enabled ? 'DIAKTIFKAN' : 'DINONAKTIFKAN'}`, enabled ? 'success' : 'warning');
+            const currentReason = window.appInstance && window.appInstance.status ?
+                window.appInstance.status.last_alarm_reason : null;
+            if (currentReason === 'GEOFENCE_BREACH') {
+                this.alarmUiActive = false;
+                this.stopBrowserSiren();
+                const modal = document.getElementById('emergencyAlertModal');
+                if (modal) modal.classList.remove('active');
+            }
+        }
+
+        if (dispatchToCloud) {
+            this._dispatchFirebaseCommand('geofence_enabled', enabled);
+            this._showToast(`Pagar Virtual Geofence: ${enabled ? 'DIAKTIFKAN' : 'DINONAKTIFKAN'}`, enabled ? 'success' : 'warning');
+        }
     }
 
     setAnchorPoint(lat, lng) {
-        this.anchorLat = lat;
-        this.anchorLng = lng;
+        if (!this._isValidCoordinate(lat, lng)) {
+            this._showToast('Koordinat titik parkir tidak valid.', 'warning');
+            return;
+        }
+        this.anchorLat = parseFloat(lat);
+        this.anchorLng = parseFloat(lng);
 
         if (this.mapController) {
-            this.mapController.setGeofence(lat, lng, this.geofenceRadius);
+            this.mapController.setGeofence(this.anchorLat, this.anchorLng, this.geofenceRadius);
         }
 
-        this._dispatchFirebaseCommand('anchor_lat', lat);
-        this._dispatchFirebaseCommand('anchor_lng', lng);
-        this.updateLiveDistance(lat, lng);
+        this._dispatchFirebaseCommand('anchor_lat', this.anchorLat);
+        this._dispatchFirebaseCommand('anchor_lng', this.anchorLng);
+        this.updateLiveDistance(this.anchorLat, this.anchorLng);
+    }
+
+    _isValidCoordinate(lat, lng) {
+        const nLat = Number(lat);
+        const nLng = Number(lng);
+        return Number.isFinite(nLat) && Number.isFinite(nLng) &&
+            Math.abs(nLat) <= 90 && Math.abs(nLng) <= 180 &&
+            !(Math.abs(nLat) < 0.0001 && Math.abs(nLng) < 0.0001);
     }
 
     calculateDistanceMeters(lat1, lon1, lat2, lon2) {
-        if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+        const nLat1 = parseFloat(lat1);
+        const nLon1 = parseFloat(lon1);
+        const nLat2 = parseFloat(lat2);
+        const nLon2 = parseFloat(lon2);
+        if (isNaN(nLat1) || isNaN(nLon1) || isNaN(nLat2) || isNaN(nLon2)) return 0;
+        if (Math.abs(nLat1) < 0.0001 || Math.abs(nLat2) < 0.0001) return 0;
+
         const R = 6371000; // Radius bumi dalam meter
-        const dLat = (lat2 - lat1) * (Math.PI / 180);
-        const dLon = (lon2 - lon1) * (Math.PI / 180);
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const dLat = (nLat2 - nLat1) * (Math.PI / 180.0);
+        const dLon = (nLon2 - nLon1) * (Math.PI / 180.0);
+        const a = Math.sin(dLat / 2.0) * Math.sin(dLat / 2.0) +
+                  Math.cos(nLat1 * (Math.PI / 180.0)) * Math.cos(nLat2 * (Math.PI / 180.0)) *
+                  Math.sin(dLon / 2.0) * Math.sin(dLon / 2.0);
+        const c = 2.0 * Math.atan2(Math.sqrt(a), Math.sqrt(1.0 - a));
         return R * c;
     }
 
     updateLiveDistance(currentLat, currentLng) {
-        if (!currentLat || !currentLng || isNaN(currentLat) || isNaN(currentLng)) return;
+        const cLat = parseFloat(currentLat);
+        const cLng = parseFloat(currentLng);
+        if (!this._isValidCoordinate(cLat, cLng)) return;
 
-        // Jika anchor belum pernah di-set, gunakan lokasi awal
-        if (!this.anchorLat || !this.anchorLng) {
-            this.anchorLat = currentLat;
-            this.anchorLng = currentLng;
+        // Geofence OFF tidak boleh mempertahankan atau membentuk indikator
+        // breach baru. Pembersihan utama dilakukan setGeofenceEnabled().
+        if (!this.geofenceEnabled) return;
+
+        // Jika anchor belum pernah di-set, gunakan lokasi pertama kali ditemukan
+        if (this.anchorLat === null || this.anchorLng === null || isNaN(this.anchorLat) || isNaN(this.anchorLng)) {
+            this.anchorLat = cLat;
+            this.anchorLng = cLng;
             if (this.mapController) {
-                this.mapController.setGeofence(currentLat, currentLng, this.geofenceRadius);
+                this.mapController.setGeofence(cLat, cLng, this.geofenceRadius);
             }
         }
 
-        const dist = this.calculateDistanceMeters(this.anchorLat, this.anchorLng, currentLat, currentLng);
+        const dist = this.calculateDistanceMeters(this.anchorLat, this.anchorLng, cLat, cLng);
         const distEl = document.getElementById('liveGeofenceDistance');
         const banner = document.getElementById('geofenceStatusBanner');
         const icon = document.getElementById('geofenceStatusIcon');
@@ -442,7 +554,7 @@ class VehicleControls {
         }
 
         // Hitung persentase progress bar
-        const percent = Math.min(100, (dist / this.geofenceRadius) * 100);
+        const percent = Math.min(100, (dist / Math.max(this.geofenceRadius, 1)) * 100);
         if (progBar) {
             progBar.style.width = `${percent}%`;
         }
@@ -454,15 +566,20 @@ class VehicleControls {
             if (statusText) statusText.innerHTML = '<span style="color: var(--accent-red);">⚠️ KELUAR DARI RADIUS AMAN!</span>';
             if (progBar) progBar.classList.add('danger');
 
-            // Auto-Cutoff jika diaktifkan
+            // Firmware adalah otoritas auto-cutoff pada perangkat nyata. Dashboard
+            // hanya mengeksekusi lokal ketika berada di mode simulasi agar tidak
+            // menggandakan panic/SMS yang sudah dipicu ESP8266.
             const btnEngine = document.getElementById('btnToggleEngine');
             const isCurrentlyLocked = btnEngine && btnEngine.dataset.locked === 'true';
-            if (this.autoCutoffGeofence && !isCurrentlyLocked) {
+            const isSimulation = Boolean(window.appInstance && window.appInstance.isSimMode);
+            if (isSimulation && this.autoCutoffGeofence && !isCurrentlyLocked && !this._breachActionSent) {
+                this._breachActionSent = true;
                 console.warn('[GEOFENCE AUTO-CUTOFF] Motor keluar radius! Mematikan mesin otomatis.');
                 this.setEngineLock(true);
                 this.triggerPanicAlarm();
             }
         } else {
+            this._breachActionSent = false;
             if (banner) banner.classList.remove('breach');
             if (icon) icon.className = 'fa-solid fa-shield-halved';
             if (statusText && this.geofenceEnabled) {
@@ -479,12 +596,15 @@ class VehicleControls {
         }
 
         const vehicleId = window.currentVehicleId || APP_CONFIG.DEFAULT_VEHICLE_ID;
-        const nowSec = Math.floor(Date.now() / 1000);
+        // ID command milidetik 32-bit: kompatibel dengan uint32_t ESP8266 dan
+        // tidak menggabungkan dua aksi yang terjadi pada detik yang sama.
+        const commandId = Date.now() >>> 0;
         const updates = {};
         updates[`vehicles/${vehicleId}/controls/${commandKey}`] = value;
-        updates[`vehicles/${vehicleId}/controls/last_command_time`] = nowSec;
+        updates[`vehicles/${vehicleId}/controls/last_command_time`] = commandId;
+        updates[`vehicles/${vehicleId}/controls/last_command_key`] = commandKey;
 
-        // 1. Dispatch via Firebase Web SDK
+        // Gunakan satu jalur pengiriman agar setiap perubahan tidak terkirim dua kali.
         if (window.firebaseDb) {
             window.firebaseDb.ref().update(updates)
                 .then(() => {
@@ -493,13 +613,15 @@ class VehicleControls {
                 .catch(err => {
                     console.warn(`[FIREBASE SDK WARN] ${err.message}`);
                 });
+            return;
         }
 
-        // 2. Dual-Dispatch via Direct HTTP REST API (Sangat Handal untuk Vercel / Mobile Browser)
+        // Fallback REST ketika Firebase SDK belum tersedia.
         const restUrl = `${APP_CONFIG.FIREBASE_CONFIG.databaseURL}/vehicles/${vehicleId}/controls.json`;
         const restBody = JSON.stringify({
             [commandKey]: value,
-            last_command_time: nowSec
+            last_command_time: commandId,
+            last_command_key: commandKey
         });
 
         fetch(restUrl, {

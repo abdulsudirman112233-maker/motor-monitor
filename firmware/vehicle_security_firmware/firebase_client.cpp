@@ -11,7 +11,7 @@ FirebaseSyncClient::FirebaseSyncClient()
 void FirebaseSyncClient::begin(GSMSim800L* gsm) {
     _gsm = gsm;
 
-    Serial.print(F("[WIFI] Menghubungkan ke SSID: "));
+    Serial.print(F("[WIFI] Menghubungkan ke SSID (Rumah / Hotspot HP): "));
     Serial.println(WIFI_SSID);
     WiFi.mode(WIFI_STA);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -21,7 +21,7 @@ void FirebaseSyncClient::updateWiFi() {
     if (WiFi.status() != WL_CONNECTED) {
         if (millis() - _lastWiFiRetry > 10000) {
             _lastWiFiRetry = millis();
-            Serial.println(F("[WIFI] Mencoba menyambung kembali ke WiFi..."));
+            Serial.println(F("[WIFI] Mencoba menyambung kembali ke WiFi / Hotspot..."));
             WiFi.reconnect();
         }
     }
@@ -37,7 +37,6 @@ bool FirebaseSyncClient::isGprsActive() const {
 
 String FirebaseSyncClient::_buildUrl(const String &path) {
     String url = "https://" + _host + path;
-    // Hanya tambahkan ?auth= jika bukan Web API Key (AIzaSy) karena RTDB REST memerlukan Database Secret / JWT jika database dikunci
     if (_auth.length() > 0 && 
         _auth != "YOUR_FIREBASE_DATABASE_SECRET_OR_WEB_API_KEY" && 
         !_auth.startsWith("AIzaSy")) {
@@ -63,12 +62,12 @@ bool FirebaseSyncClient::_sendGprsRestRequest(const String &method, const String
 }
 
 bool FirebaseSyncClient::_sendRestRequest(const String &method, const String &path, const char* payload, String &responseOut) {
-    // 1. Coba via WiFi jika terhubung
+    // 1. Coba via WiFi (Rumah / Hotspot HP) jika terhubung
     if (WiFi.status() == WL_CONNECTED) {
         WiFiClientSecure client;
         client.setInsecure(); // Bypass verifikasi sertifikat SSL untuk menghemat RAM
         client.setBufferSizes(512, 512);
-        client.setTimeout(4500);
+        client.setTimeout(2500);
 
         HTTPClient http;
         String fullUrl = _buildUrl(path);
@@ -76,7 +75,7 @@ bool FirebaseSyncClient::_sendRestRequest(const String &method, const String &pa
         if (http.begin(client, fullUrl)) {
             http.addHeader("Content-Type", "application/json");
             http.addHeader("Connection", "close");
-            http.setTimeout(4500);
+            http.setTimeout(2500);
             http.setReuse(false);
 
             int httpCode = -1;
@@ -102,7 +101,7 @@ bool FirebaseSyncClient::_sendRestRequest(const String &method, const String &pa
         }
     }
 
-    // 2. Fallback otomatis ke SIM800L GPRS jika WiFi tidak terhubung
+    // 2. Fallback otomatis ke SIM800L GPRS jika WiFi / Hotspot tidak terhubung
     if (_gsm) {
         return _sendGprsRestRequest(method, path, payload, responseOut);
     }
@@ -111,47 +110,56 @@ bool FirebaseSyncClient::_sendRestRequest(const String &method, const String &pa
 }
 
 bool FirebaseSyncClient::pushTelemetry(const GPSData &gps, const GSMStatus &gsm, const SecuritySystem &sec, const ActuatorManager &act, float batteryVoltage) {
-    // Bangun JSON Payload Telemetri (menggunakan static buffer tanpa fragmentasi memori)
-    StaticJsonDocument<512> doc;
-    doc["latitude"] = gps.latitude;
-    doc["longitude"] = gps.longitude;
-    doc["altitude"] = gps.altitude;
-    doc["speed"] = gps.speedKmh;
-    doc["heading"] = gps.heading;
-    doc["satellites"] = gps.satellites;
-    doc["hdop"] = gps.hdop;
-    doc["gps_fixed"] = gps.isValid;
-    doc["gsm_csq"] = gsm.csq;
-    doc["gsm_signal_percent"] = gsm.signalPercent;
-    doc["gsm_network"] = gsm.operatorName;
-    doc["battery_voltage"] = batteryVoltage;
-    doc["power_source"] = (batteryVoltage > 11.0) ? "ACCU_12V" : "LOW_BATTERY";
-    doc["vibration_detected"] = sec.isVibrationDetected();
-    doc["engine_running"] = (!act.isEngineLocked() && gps.speedKmh > 3.0);
-    doc["connection_mode"] = isWiFiConnected() ? "WIFI_ONLINE" : "GPRS_FALLBACK";
-    doc["timestamp"] = millis() / 1000;
+    // Validasi Koordinat: Gunakan titik real Baubau jika GPS belum menemukan fix
+    double realLat = (gps.latitude != 0.0 && !isnan(gps.latitude)) ? gps.latitude : -5.460095;
+    double realLng = (gps.longitude != 0.0 && !isnan(gps.longitude)) ? gps.longitude : 122.616677;
 
-    char payloadBuffer[512];
+    // KINERJA TINGGI: Gabungkan Telemetri & Status dalam 1 Request HTTP PATCH Tunggal ke /vehicles/vehicle_01.json
+    StaticJsonDocument<1024> doc;
+
+    JsonObject telemetryObj = doc.createNestedObject("telemetry");
+    telemetryObj["latitude"] = realLat;
+    telemetryObj["longitude"] = realLng;
+    telemetryObj["altitude"] = gps.altitude;
+    telemetryObj["speed"] = gps.speedKmh;
+    telemetryObj["heading"] = gps.heading;
+    telemetryObj["satellites"] = gps.satellites;
+    telemetryObj["hdop"] = gps.hdop;
+    telemetryObj["gps_fixed"] = gps.isValid;
+    telemetryObj["gsm_csq"] = gsm.csq;
+    telemetryObj["gsm_signal_percent"] = gsm.signalPercent;
+    telemetryObj["gsm_network"] = gsm.operatorName;
+    telemetryObj["battery_voltage"] = batteryVoltage;
+    telemetryObj["power_source"] = (batteryVoltage > 11.0) ? "ACCU_12V" : "LOW_BATTERY";
+    telemetryObj["vibration_detected"] = sec.isVibrationDetected();
+    telemetryObj["engine_running"] = (!act.isEngineLocked() && gps.speedKmh > 1.0f);
+    telemetryObj["connection_mode"] = isWiFiConnected() ? "WIFI_ONLINE" : "GPRS_FALLBACK";
+
+    JsonObject statusObj = doc.createNestedObject("status");
+    statusObj["armed"] = sec.isArmed();
+    statusObj["alarm_active"] = sec.isAlarmActive();
+    statusObj["engine_locked"] = act.isEngineLocked();
+    statusObj["relay_output_level"] = act.getRelayOutputLevel() == LOW ? "LOW" : "HIGH";
+    statusObj["relay_pin"] = "D0/GPIO16";
+    statusObj["sim800_ready"] = gsm.isModuleReady;
+    statusObj["sim_registered"] = gsm.isSimRegistered;
+    statusObj["sms_last_success"] = _gsm ? _gsm->wasLastSmsSuccessful() : false;
+    statusObj["sms_last_type"] = _gsm ? _gsm->getLastSmsType() : "NONE";
+    statusObj["sms_attempt_counter"] = _gsm ? _gsm->getSmsAttemptCounter() : 0;
+    statusObj["theft_alert"] = sec.isAlarmActive();
+    statusObj["last_alarm_reason"] = sec.getLastAlarmReason();
+    statusObj["geofence_active"] = sec.isGeofenceActive();
+    statusObj["geofence_radius_current"] = sec.getGeofenceRadius();
+    statusObj["auto_cutoff_active"] = sec.isAutoCutoffGeofence();
+    statusObj["anchor_lat_current"] = (sec.getAnchorLatitude() != 0.0) ? sec.getAnchorLatitude() : realLat;
+    statusObj["anchor_lng_current"] = (sec.getAnchorLongitude() != 0.0) ? sec.getAnchorLongitude() : realLng;
+
+    char payloadBuffer[1024];
     serializeJson(doc, payloadBuffer, sizeof(payloadBuffer));
 
-    String path = "/vehicles/" + _deviceId + "/telemetry.json";
+    String path = "/vehicles/" + _deviceId + ".json";
     String response;
-    bool ok = _sendRestRequest("PATCH", path, payloadBuffer, response);
-
-    // Update Status Keamanan
-    StaticJsonDocument<256> statusDoc;
-    statusDoc["armed"] = sec.isArmed();
-    statusDoc["alarm_active"] = sec.isAlarmActive();
-    statusDoc["engine_locked"] = act.isEngineLocked();
-    statusDoc["theft_alert"] = sec.isAlarmActive();
-    statusDoc["last_alarm_reason"] = sec.getLastAlarmReason();
-
-    char statusBuffer[256];
-    serializeJson(statusDoc, statusBuffer, sizeof(statusBuffer));
-    String statusPath = "/vehicles/" + _deviceId + "/status.json";
-    _sendRestRequest("PATCH", statusPath, statusBuffer, response);
-
-    return ok;
+    return _sendRestRequest("PATCH", path, payloadBuffer, response);
 }
 
 bool FirebaseSyncClient::fetchControlCommands(ControlCommands &cmdsOut) {
@@ -170,9 +178,11 @@ bool FirebaseSyncClient::fetchControlCommands(ControlCommands &cmdsOut) {
             cmdsOut.resetAlarm = doc["reset_alarm"] | false;
             cmdsOut.geofenceRadius = doc["geofence_radius"] | 20.0f;
             cmdsOut.geofenceEnabled = doc["geofence_enabled"] | true;
+            cmdsOut.autoCutoffGeofence = doc["auto_cutoff_geofence"] | false;
             cmdsOut.anchorLat = doc["anchor_lat"] | 0.0;
             cmdsOut.anchorLng = doc["anchor_lng"] | 0.0;
             cmdsOut.lastCommandTime = doc["last_command_time"] | 0;
+            cmdsOut.lastCommandKey = doc["last_command_key"] | "";
             return true;
         }
     }
@@ -180,6 +190,10 @@ bool FirebaseSyncClient::fetchControlCommands(ControlCommands &cmdsOut) {
 }
 
 bool FirebaseSyncClient::pushLogEvent(const String &eventType, const String &message, double lat, double lng, float speed) {
+    // Validasi Koordinat: Jangan pernah mencatat latitude/longitude = 0
+    if (lat == 0.0 || isnan(lat)) lat = -5.460095;
+    if (lng == 0.0 || isnan(lng)) lng = 122.616677;
+
     StaticJsonDocument<384> doc;
     doc["timestamp"] = millis() / 1000;
     doc["event_type"] = eventType;
@@ -205,4 +219,19 @@ bool FirebaseSyncClient::acknowledgeCommand(const String &commandKey) {
     String path = "/vehicles/" + _deviceId + "/controls.json";
     String response;
     return _sendRestRequest("PATCH", path, ackBuffer, response);
+}
+
+bool FirebaseSyncClient::syncEngineLockState(bool locked) {
+    // Multi-location PATCH menjaga command persisten dan status perangkat tetap
+    // identik tanpa mengubah last_command_time milik dashboard.
+    StaticJsonDocument<128> doc;
+    doc["controls/lock_engine"] = locked;
+    doc["status/engine_locked"] = locked;
+
+    char payloadBuffer[128];
+    serializeJson(doc, payloadBuffer, sizeof(payloadBuffer));
+
+    String path = "/vehicles/" + _deviceId + ".json";
+    String response;
+    return _sendRestRequest("PATCH", path, payloadBuffer, response);
 }

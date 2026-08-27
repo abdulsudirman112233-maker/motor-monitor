@@ -25,6 +25,7 @@ public:
     GPSManager(uint8_t rxPin, uint8_t txPin);
     void begin(uint32_t baudRate = GPS_BAUD_RATE);
     void update();
+    void listen();
     
     bool hasValidFix() const;
     GPSData getData() const;
@@ -43,6 +44,10 @@ private:
     TinyGPSPlus _tinyGps;
     GPSData _currentData;
     uint32_t _lastPrintTime;
+    uint8_t _movementConfirmations;
+    double _candidateLatitude;
+    double _candidateLongitude;
+    uint32_t _lastAcceptedPositionTime;
 };
 
 #endif // GPS_MANAGER_H

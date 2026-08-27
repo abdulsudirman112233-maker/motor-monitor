@@ -21,9 +21,11 @@ struct ControlCommands {
     bool resetAlarm;
     float geofenceRadius;
     bool geofenceEnabled;
+    bool autoCutoffGeofence;
     double anchorLat;
     double anchorLng;
     uint32_t lastCommandTime;
+    String lastCommandKey;
 };
 
 class FirebaseSyncClient {
@@ -40,6 +42,7 @@ public:
     bool fetchControlCommands(ControlCommands &cmdsOut);
     bool pushLogEvent(const String &eventType, const String &message, double lat, double lng, float speed);
     bool acknowledgeCommand(const String &commandKey);
+    bool syncEngineLockState(bool locked);
 
 private:
     GSMSim800L* _gsm;

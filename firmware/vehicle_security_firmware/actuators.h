@@ -2,6 +2,7 @@
 #define ACTUATORS_H
 
 #include <Arduino.h>
+#include <EEPROM.h>
 #include "config.h"
 
 enum BuzzerPattern {
@@ -13,6 +14,10 @@ enum BuzzerPattern {
     BUZZER_SHORT_ALERT     // Single alert beep
 };
 
+// Modul relay active-low: jangan membalik pemetaan ini.
+static const uint8_t RELAY_LEVEL_ENGINE_CUTOFF = LOW;
+static const uint8_t RELAY_LEVEL_ENGINE_NORMAL = HIGH;
+
 class ActuatorManager {
 public:
     ActuatorManager(uint8_t relayPin = PIN_RELAY_IGNITION, uint8_t buzzerPin = PIN_BUZZER);
@@ -23,6 +28,7 @@ public:
     // Kontrol Relay Pemutus Pengapian (Engine Cut-off)
     void setEngineLocked(bool lock);
     bool isEngineLocked() const;
+    uint8_t getRelayOutputLevel() const;
     
     // Kontrol Buzzer Alarm
     void setBuzzerPattern(BuzzerPattern pattern);
@@ -43,6 +49,8 @@ private:
     uint32_t _lastToggleTime;
     uint8_t _stepCount;
     bool _buzzerState;
+
+    void _saveEngineLockState();
     
     void _setBuzzerHardware(bool state);
     void _processBuzzerPattern();

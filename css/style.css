@@ -1134,6 +1134,17 @@ body {
     height: 15px;
 }
 
+.geofence-sync-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    padding: 6px 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    margin-top: 4px;
+}
+
 /* Responsive Breakpoints */
 @media (max-width: 1080px) {
     .dashboard-grid {

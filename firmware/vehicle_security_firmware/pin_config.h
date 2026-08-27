@@ -15,8 +15,8 @@
  * | D1        | GPIO 5     | SIM800L TXD   | Hubungkan D1 (ESP RX) ke TXD SIM800L |
  * | D2        | GPIO 4     | SIM800L RXD   | Hubungkan D2 (ESP TX) ke RXD SIM800L |
  * | D7        | GPIO 13    | Sensor SW-420 | Hubungkan D7 ke Pin DO (Digital Out) |
- * | D3        | GPIO 0     | Relay Modul   | Active LOW (Kontrol Pemutus CDI/Koil)|
- * | D0        | GPIO 16    | Buzzer Alarm  | Transistor Driver 2N2222 / Active 5V |
+ * | D0        | GPIO 16    | Relay Modul   | Active LOW, kontak NC fail-safe       |
+ * | D8        | GPIO 15    | Buzzer Alarm  | Driver 2N2222 + pull-down basis 10k   |
  * | A0        | ADC0       | Sensor Aki    | Pembagi Tegangan Resistor (Maks 3.3V)|
  * | 3V3       | 3.3V Power | VCC GPS / Sens| Output Regulator 3.3V NodeMCU        |
  * | VIN       | 5V Power   | Power Utama   | Input 5V dari Stepdown DC-DC LM2596  |
@@ -62,15 +62,16 @@
 // 4. PIN AKTUATOR MODUL RELAY 2-CHANNEL (LOGIKA KONTAK PENGAPIAN)
 // =============================================================================
 // Channel 1: Output digital untuk mematikan mesin jarak jauh (Engine Cut-Off)
-// HIGH = Relay OFF (Matikan Mesin / Putus Pengapian), LOW = Relay ON (Restore / Mesin Hidup Normal)
-#define PIN_RELAY_IGNITION  D3    // GPIO0  - Output Kontrol Relay Channel 1 (Engine Cut-Off)
+// Kontak motor wajib COM-NC: HIGH = koil relay OFF / mesin normal,
+// LOW = koil relay ON / jalur NC terbuka / engine cut-off.
+#define PIN_RELAY_IGNITION  D0    // GPIO16 - Tambahkan pull-up eksternal 10k ke 3V3
 #define PIN_RELAY_AUX       D4    // GPIO2  - Output Kontrol Relay Channel 2 (Cadangan / Klakson / Starter)
 
 // =============================================================================
 // 5. PIN AKTUATOR BUZZER ALARM (SIRENE & LOCATOR CHIRP)
 // =============================================================================
 // Output digital untuk membunyikan sirine alarm pencurian atau tanda suara locator
-#define PIN_BUZZER          D0    // GPIO16 - Output Digital ke Driver Transistor Buzzer
+#define PIN_BUZZER          D8    // GPIO15 - Driver transistor; wajib pull-down basis 10k
 
 // =============================================================================
 // 6. PIN SENSOR TEGANGAN AKI MOTOR (VOLTAGE DIVIDER MONITORING)

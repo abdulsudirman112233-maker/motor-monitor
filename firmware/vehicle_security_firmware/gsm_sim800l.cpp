@@ -1,7 +1,10 @@
 #include "gsm_sim800l.h"
 
 GSMSim800L::GSMSim800L(uint8_t rxPin, uint8_t txPin)
-    : _gsmSerial(rxPin, txPin), _hasNewSMS(false), _lastCSQCheck(0) {
+    : _gsmSerial(rxPin, txPin), _modem(_gsmSerial),
+      _hasNewSMS(false), _lastCSQCheck(0),
+      _lastRegistrationCheck(0),
+      _lastSmsSuccess(false), _lastSmsType("NONE"), _smsAttemptCounter(0) {
     _status.isModuleReady = false;
     _status.isSimRegistered = false;
     _status.csq = 0;
@@ -15,12 +18,13 @@ bool GSMSim800L::begin(uint32_t baudRate) {
     _gsmSerial.begin(baudRate);
     Serial.println(F("[GSM] Inisialisasi SoftwareSerial SIM800L..."));
     
-    // Kirim sinkronisasi AT berulang kali (Auto-Baud sync)
+    // TinyGSM menangani sinkronisasi modem seperti contoh rujukan ESP32.
+    // Baud tetap 9600 karena ESP8266 menggunakan SoftwareSerial, bukan UART2.
     bool ok = false;
     for (int i = 0; i < 4; i++) {
         delay(400);
-        String resp = sendATCommand("AT", 1000, "OK");
-        if (resp.indexOf("OK") != -1) {
+        _gsmSerial.listen();
+        if (_modem.init()) {
             ok = true;
             break;
         }
@@ -63,9 +67,10 @@ bool GSMSim800L::begin(uint32_t baudRate) {
     // Aktifkan indikasi SMS masuk langsung (direct notification CMT)
     sendATCommand("AT+CNMI=2,2,0,0,0", 1000, "OK");
 
-    // Periksa status registrasi jaringan seluler
-    String regResp = sendATCommand("AT+CREG?", 2000, "OK");
-    if (regResp.indexOf(",1") != -1 || regResp.indexOf(",5") != -1) {
+    // TinyGSM memeriksa registrasi circuit-switched yang diperlukan SMS.
+    // Batasi tunggu awal agar GPS/dashboard tidak tertahan. Jika 2G belum siap,
+    // update() melanjutkan pemeriksaan tiap 5 detik tanpa blocking panjang.
+    if (_modem.waitForNetwork(15000L)) {
         _status.isSimRegistered = true;
         Serial.println(F("[GSM] SIM Card Terdaftar di Jaringan Seluler."));
     } else {
@@ -73,16 +78,9 @@ bool GSMSim800L::begin(uint32_t baudRate) {
     }
 
     // Periksa nama operator
-    String copsResp = sendATCommand("AT+COPS?", 3000, "OK");
-    int firstQuote = copsResp.indexOf('"');
-    if (firstQuote != -1) {
-        int secondQuote = copsResp.indexOf('"', firstQuote + 1);
-        if (secondQuote != -1) {
-            _status.operatorName = copsResp.substring(firstQuote + 1, secondQuote);
-            Serial.print(F("[GSM] Operator: "));
-            Serial.println(_status.operatorName);
-        }
-    }
+    _status.operatorName = _modem.getOperator();
+    Serial.print(F("[GSM] Operator: "));
+    Serial.println(_status.operatorName);
 
     checkSignalQuality();
     return true;
@@ -91,6 +89,19 @@ bool GSMSim800L::begin(uint32_t baudRate) {
 void GSMSim800L::update() {
     _gsmSerial.listen();
     _parseIncomingStream();
+
+    // Saat belum terdaftar, periksa ulang tiap 5 detik. Sebelumnya status baru
+    // diperbarui tiap 30 detik sehingga dashboard lama menampilkan "belum
+    // terdaftar" walaupun modem berhasil masuk jaringan beberapa detik kemudian.
+    if (!_status.isSimRegistered && millis() - _lastRegistrationCheck >= 5000) {
+        _lastRegistrationCheck = millis();
+        if (_refreshNetworkRegistration()) {
+            Serial.println(F("[GSM/TinyGSM] Registrasi jaringan 2G berhasil."));
+            checkSignalQuality();
+        } else {
+            Serial.println(F("[GSM/TinyGSM] Masih mencari jaringan 2G..."));
+        }
+    }
 
     if (millis() - _lastCSQCheck > INTERVAL_GSM_CHECK) {
         _lastCSQCheck = millis();
@@ -102,6 +113,7 @@ void GSMSim800L::update() {
             }
         } else {
             checkSignalQuality();
+            _refreshNetworkRegistration();
         }
     }
 }
@@ -148,100 +160,74 @@ void GSMSim800L::_parseCMTLine(const String &headerLine) {
     }
 }
 
-bool GSMSim800L::sendSMS(const String &phoneNumber, const String &messageText) {
+bool GSMSim800L::sendSMS(const String &phoneNumber, const String &messageText, const String &messageType) {
+    _smsAttemptCounter++;
+    _lastSmsType = messageType;
+    _lastSmsSuccess = false;
+
     Serial.print(F("[GSM] Mengirim SMS ke: "));
     Serial.println(phoneNumber);
 
     _gsmSerial.listen();
     delay(50);
-    
-    // 1. Pastikan Text Mode dan Konfigurasi SMS GSM aktif
-    sendATCommand("AT+CMGF=1", 800, "OK");
-    sendATCommand("AT+CSCS=\"GSM\"", 800, "OK");
-    sendATCommand("AT+CSMP=17,167,0,0", 800, "OK");
 
-    // Bersihkan buffer serial
-    while (_gsmSerial.available()) {
-        _gsmSerial.read();
-    }
-
-    // 2. Kirim perintah tujuan nomor HP
-    String cmd = "AT+CMGS=\"" + phoneNumber + "\"";
-    _gsmSerial.println(cmd);
-    
-    // 3. Tunggu prompt '>' dari SIM800L
-    unsigned long startTime = millis();
-    bool gotPrompt = false;
-    while (millis() - startTime < 6000) {
-        if (_gsmSerial.available()) {
-            char c = _gsmSerial.read();
-            if (c == '>') {
-                gotPrompt = true;
-                break;
-            }
-        }
-        delay(5);
-    }
-
-    if (!gotPrompt) {
-        Serial.println(F("[GSM] Gagal: Tidak mendapatkan prompt '>' dari SIM800L. Cek sinyal & pulsa SIM card!"));
+    if (!_status.isModuleReady) {
+        Serial.println(F("[GSM] Gagal: modul SIM800L belum siap."));
         return false;
     }
 
-    // 4. Kirim teks pesan dan akhiri dengan Ctrl+Z (ASCII 26)
-    _gsmSerial.print(messageText);
-    delay(200);
-    _gsmSerial.write(26); // ASCII 26 = Ctrl+Z
-    _gsmSerial.println();
-    delay(200);
-
-    // 5. Tunggu respons pengiriman dari jaringan seluler (maksimal 25 detik)
-    startTime = millis();
-    String resp = "";
-    while (millis() - startTime < 25000) {
-        if (_gsmSerial.available()) {
-            char c = _gsmSerial.read();
-            resp += c;
-            if (resp.indexOf("+CMGS:") != -1 || resp.indexOf("OK") != -1) {
-                Serial.print(F("[GSM] SMS Berhasil Terkirim! Respons: "));
-                Serial.println(resp);
-                return true;
-            }
-            if (resp.indexOf("ERROR") != -1 || resp.indexOf("+CMS ERROR") != -1) {
-                Serial.print(F("[GSM] Gagal Kirim SMS. Respons Modem: "));
-                Serial.println(resp);
-                return false;
-            }
-        }
-        delay(10);
+    // Berikan SoftwareSerial secara eksklusif kepada TinyGSM sepanjang transaksi.
+    // GPS akan kembali di-listen oleh GPSManager pada putaran loop berikutnya.
+    if (!_modem.testAT(1500L)) {
+        _status.isModuleReady = false;
+        Serial.println(F("[GSM/TinyGSM] Gagal: modem tidak merespons AT."));
+        return false;
     }
 
-    Serial.println(F("[GSM] Timeout: Tidak ada balasan dari jaringan seluler saat mengirim SMS."));
-    return false;
+    if (!_modem.isNetworkConnected() && !_modem.waitForNetwork(20000L)) {
+        _status.isSimRegistered = false;
+        Serial.println(F("[GSM] Gagal: SIM belum terdaftar di jaringan operator."));
+        return false;
+    }
+    _status.isSimRegistered = true;
+
+    // TinyGSM mengelola CMGF, CMGS, prompt, Ctrl+Z, timeout dan respons modem.
+    _lastSmsSuccess = _modem.sendSMS(phoneNumber, messageText);
+    Serial.println(_lastSmsSuccess ?
+        F("[GSM/TinyGSM] SMS berhasil disubmit ke jaringan.") :
+        F("[GSM/TinyGSM] SMS gagal. Periksa CSQ, pulsa, SMSC dan catu 4V/2A."));
+    return _lastSmsSuccess;
 }
 
-bool GSMSim800L::checkSignalQuality() {
-    String resp = sendATCommand("AT+CSQ", 1500, "OK");
-    int idx = resp.indexOf("+CSQ: ");
-    if (idx != -1) {
-        int commaIdx = resp.indexOf(',', idx);
-        if (commaIdx != -1) {
-            String csqStr = resp.substring(idx + 6, commaIdx);
-            csqStr.trim();
-            uint8_t csqVal = csqStr.toInt();
-            _status.csq = csqVal;
-            
-            if (csqVal == 99 || csqVal == 0) {
-                _status.signalPercent = 0;
-                _status.signalDbm = -115;
-            } else {
-                _status.signalPercent = map(csqVal, 2, 31, 10, 100);
-                _status.signalDbm = -113 + (csqVal * 2);
-            }
-            return true;
-        }
+bool GSMSim800L::_refreshNetworkRegistration() {
+    _gsmSerial.listen();
+    _status.isSimRegistered = _modem.isNetworkConnected();
+    if (_status.isSimRegistered &&
+        (_status.operatorName.length() == 0 || _status.operatorName == "SEARCHING")) {
+        _status.operatorName = _modem.getOperator();
     }
-    return false;
+    return _status.isSimRegistered;
+}
+
+bool GSMSim800L::wasLastSmsSuccessful() const { return _lastSmsSuccess; }
+String GSMSim800L::getLastSmsType() const { return _lastSmsType; }
+uint32_t GSMSim800L::getSmsAttemptCounter() const { return _smsAttemptCounter; }
+
+bool GSMSim800L::checkSignalQuality() {
+    _gsmSerial.listen();
+    int16_t signal = _modem.getSignalQuality();
+    if (signal < 0) return false;
+    uint8_t csqVal = (uint8_t)signal;
+    _status.csq = csqVal;
+
+    if (csqVal == 99 || csqVal == 0) {
+        _status.signalPercent = 0;
+        _status.signalDbm = -115;
+    } else {
+        _status.signalPercent = constrain(map(csqVal, 2, 31, 10, 100), 0, 100);
+        _status.signalDbm = -113 + (csqVal * 2);
+    }
+    return true;
 }
 
 GSMStatus GSMSim800L::getStatus() const {
@@ -281,12 +267,16 @@ String GSMSim800L::sendATCommand(const String &command, uint32_t timeoutMs, cons
                 break;
             }
         }
+        delay(1); // yield ke WiFi/watchdog ESP8266 selama menunggu modem
     }
     return response;
 }
 
 bool GSMSim800L::initGPRS(const String &apn, const String &user, const String &pass) {
     Serial.println(F("[GSM] Menghubungkan GPRS..."));
+    // Reset bearer lama jika ada sesi menggantung di SIM800L
+    sendATCommand("AT+SAPBR=0,1", 1000, "OK");
+    delay(50);
     sendATCommand("AT+SAPBR=3,1,\"Contype\",\"GPRS\"", 2000, "OK");
     sendATCommand("AT+SAPBR=3,1,\"APN\",\"" + apn + "\"", 2000, "OK");
     

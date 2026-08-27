@@ -19,13 +19,13 @@
 // KONFIGURASI JARINGAN & SERVER
 // =============================================================================
 // Koneksi WiFi (Utama untuk kecepatan sync real-time)
-#define WIFI_SSID           "Cyclop"
-#define WIFI_PASSWORD       "Cyclop2000"
+#define WIFI_SSID           "Cyclop2"
+#define WIFI_PASSWORD       "Cyclop2004"
 
-// Koneksi APN GSM/GPRS (Fallback saat di luar jangkauan WiFi)
-#define GSM_APN             "internet"        // Contoh: "internet" (Telkomsel/Indosat/XL)
-#define GSM_APN_USER        ""
-#define GSM_APN_PASS        ""
+// Koneksi APN GSM/GPRS Telkomsel (Kartu As / SimPATI / Halo / By.U)
+#define GSM_APN             "telkomsel"       // APN Resmi Telkomsel
+#define GSM_APN_USER        "wg"              // Default user Telkomsel
+#define GSM_APN_PASS        "wg"              // Default password Telkomsel
 
 // Konfigurasi Firebase Realtime Database
 // URL Firebase tanpa protokol 'https://' dan tanpa trailing slash '/'
@@ -34,16 +34,17 @@
 
 // Nomor HP Pemilik Kendaraan untuk Notifikasi SMS Darurat
 // Format internasional (misal: +6281234567890)
-#define OWNER_PHONE_NUMBER  "+6281523842859"
+#define OWNER_PHONE_NUMBER  "+6285217421209"
 
 // =============================================================================
 // PARAMETER INTERVAL WAKTU & TIMING (MILLISECONDS)
 // =============================================================================
-#define INTERVAL_TELEMETRY_FAST   3000   // 3 detik saat kendaraan bergerak / darurat
-#define INTERVAL_TELEMETRY_SLOW   15000  // 15 detik saat idle / parkir
-#define INTERVAL_COMMAND_POLL     1500   // 1.5 detik cek perintah Web Dashboard
+#define INTERVAL_TELEMETRY_FAST   1500   // 1.5 detik; beri waktu SoftwareSerial GPS
+#define INTERVAL_TELEMETRY_SLOW   3000   // 3 detik saat idle / parkir
+#define INTERVAL_COMMAND_POLL     1200   // 1.2 detik agar HTTPS tidak menelan data NMEA
 #define INTERVAL_GSM_CHECK        30000  // 30 detik cek sinyal GSM CSQ
 #define INTERVAL_GPRS_SYNC        8000   // 8 detik saat mode GPRS aktif
+#define INTERVAL_NETWORK_GUARD    75     // Jeda minimum antar transaksi jaringan
 
 // Parameter Sensor Getar & Alarm Cerdas (Anti False-Alarm)
 #define VIBRATION_DEBOUNCE_MS     120    // Filter bouncing antar pulsa getaran (ms)

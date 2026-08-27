@@ -33,9 +33,9 @@ Sistem Keamanan & Pelacak Kendaraan Cerdas berbasis **NodeMCU ESP8266**, **GPS N
 | | VCC / GND | Step-Down 3.8V - 4.0V | Dedicated LM2596 (Min 2A) + Elco 1000µF |
 | **Sensor Getar SW-420** | DO (Digital Out) | **D7** | GPIO13 |
 | | VCC / GND | 3.3V / GND | Catu daya sensor |
-| **Modul Relay (Engine Kill)** | IN (Signal) | **D8** | GPIO15 (HIGH = Cut-Off / Putus Kontak) |
+| **Modul Relay (Engine Kill)** | IN (Signal) | **D0** | GPIO16 (Active LOW, COM-NC fail-safe) |
 | | VCC / GND | 5V (Vin) / GND | Jalur pemutus pengapian CDI/Coil |
-| **Buzzer / Sirene Alarm** | POS (+) | **D3** | GPIO00 (Active-HIGH) |
+| **Buzzer / Sirene Alarm** | Driver transistor | **D8** | GPIO15 (Active-HIGH + pull-down 10k) |
 | | NEG (-) | GND | Buzzer alarm |
 | **Sensor Tegangan Aki** | Signal | **A0** | ADC0 (Voltage Divider R1 100k + R2 10k) |
 
@@ -81,6 +81,7 @@ GPSDANGSM/
 1. Buka Arduino IDE, pastikan board **NodeMCU 1.0 (ESP-12E Module)** telah terpasang.
 2. Install library berikut melalui Library Manager:
    - `TinyGPSPlus`
+   - `TinyGSM` (modem SIM800L)
    - `ArduinoJson` (v6.x)
    - `SoftwareSerial`
 3. Buka file [firmware/vehicle_security_firmware/config.h](file:///d:/GPSDANGSM/firmware/vehicle_security_firmware/config.h) dan sesuaikan:

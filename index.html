@@ -146,10 +146,10 @@
                     <div class="engine-kill-box" id="engineKillBox">
                         <div class="kill-switch-info">
                             <h3><i class="fa-solid fa-power-off"></i> ENGINE KILL SWITCH</h3>
-                            <p>Memutus pengapian CDI via Relay D3</p>
+                            <p id="engineRelayState">Relay D0 • Normal HIGH</p>
                         </div>
                         <button class="btn-engine-toggle" id="btnToggleEngine" data-locked="false">
-                            <i class="fa-solid fa-ban"></i> MATIKAN MESIN
+                            <i class="fa-solid fa-key"></i> PULIHKAN MESIN
                         </button>
                     </div>
 
@@ -169,6 +169,9 @@
                             <i class="fa-solid fa-comment-sms"></i>
                             <span>KIRIM SMS SOS</span>
                         </button>
+                    </div>
+                    <div id="sim800Status" style="margin-top: 10px; font-size: 0.72rem; color: var(--text-secondary);">
+                        SIM800L: menunggu status perangkat...
                     </div>
                 </div>
 
@@ -239,6 +242,9 @@
                                 <span class="checkbox-label"><i class="fa-solid fa-bolt-lightning" style="color: var(--accent-amber);"></i> Matikan Mesin Otomatis jika keluar radius</span>
                             </label>
                         </div>
+                        <div class="geofence-sync-indicator" id="geofenceSyncStatus">
+                            <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--text-secondary);"></i> Menunggu sinkronisasi ESP8266...
+                        </div>
                     </div>
                 </div>
 
@@ -295,17 +301,20 @@
             </div>
             <h2 style="color: var(--accent-red); font-size: 1.4rem;">PERINGATAN PENCURIAN!</h2>
             <p style="color: var(--text-primary); margin-top: 12px; font-size: 0.95rem;">
-                Sensor getar SW-420 mendeteksi gerakan paksa saat sistem terkunci (ARMED).
+                <span id="modalAlarmReason">Alarm keamanan kendaraan sedang aktif.</span>
             </p>
             <p style="color: var(--text-secondary); margin-top: 6px; font-size: 0.82rem;">
-                Sirene alarm kendaraan aktif dan SMS darurat beserta link Google Maps telah dikirim ke nomor pemilik.
+                Sirene alarm kendaraan aktif. Status pengiriman SMS akan dikonfirmasi langsung oleh SIM800L.
+            </p>
+            <p id="modalSmsDeliveryStatus" style="color: var(--accent-amber); margin-top: 6px; font-size: 0.78rem;">
+                Menunggu konfirmasi SMS dari perangkat...
             </p>
 
             <div class="modal-buttons">
                 <button class="btn-modal-cancel" id="btnResetAlarmModal">
                     <i class="fa-solid fa-volume-xmark"></i> Matikan Sirene & Reset
                 </button>
-                <button class="btn-modal-confirm" onclick="document.getElementById('btnToggleEngine').click(); document.getElementById('emergencyAlertModal').classList.remove('active');">
+                <button class="btn-modal-confirm" id="btnEmergencyKillModal">
                     <i class="fa-solid fa-ban"></i> Matikan Mesin Sekarang
                 </button>
             </div>

@@ -7,36 +7,62 @@ ActuatorManager::ActuatorManager(uint8_t relayPin, uint8_t buzzerPin)
 }
 
 void ActuatorManager::begin() {
-    // Mode Kontak Pengapian NO (Relay ON saat Normal, Relay OFF saat Matikan Mesin):
-    // LOW  = Relay ON  (Koil Aktif / Lampu Nyala -> Mesin Normal Siap Jalan)
-    // HIGH = Relay OFF (Koil Mati  / Lampu Mati  -> Mesin Terputus / Cut-Off)
+    // Fail-safe COM-NC, modul relay active-low:
+    // HIGH = koil relay OFF, COM-NC tersambung, mesin normal.
+    // LOW  = koil relay ON, COM-NC terbuka, mesin cut-off.
+    // Isi output latch sebelum pinMode untuk meminimalkan pulsa saat startup.
+    // Pulihkan keadaan terakhir sebelum pin dijadikan OUTPUT. Ini mencegah
+    // pulsa HIGH -> LOW setiap ESP8266 restart ketika mesin sedang di-cutoff.
+    EEPROM.begin(64);
+    const bool savedStateValid = EEPROM.read(32) == 0xC7;
+    _isEngineLocked = savedStateValid && EEPROM.read(33) == 1;
+    EEPROM.end();
+    const uint8_t startupLevel = _isEngineLocked ?
+                                 RELAY_LEVEL_ENGINE_CUTOFF :
+                                 RELAY_LEVEL_ENGINE_NORMAL;
+    digitalWrite(_relayPin, startupLevel);
     pinMode(_relayPin, OUTPUT);
-    digitalWrite(_relayPin, LOW); // Default: Relay ON (Koil aktif agar mesin bisa hidup)
-    _isEngineLocked = false;
+    digitalWrite(_relayPin, startupLevel);
 
     // Buzzer pin ke basis transistor 2N2222: HIGH = Buzzer ON, LOW = Buzzer OFF
+    digitalWrite(_buzzerPin, LOW);
     pinMode(_buzzerPin, OUTPUT);
     digitalWrite(_buzzerPin, LOW);
     _buzzerState = false;
 
-    Serial.println(F("[ACTUATOR] Relay (Normal=ON, Matikan=OFF) & Buzzer siap dioperasikan."));
+    Serial.println(F("[ACTUATOR] Relay D0 fail-safe NC & buzzer D8 siap dioperasikan."));
 }
 
 void ActuatorManager::setEngineLocked(bool lock) {
+    const bool changed = (_isEngineLocked != lock);
     _isEngineLocked = lock;
     if (_isEngineLocked) {
-        // MATIKAN MESIN: Matikan daya koil relay (Relay OFF / Pin HIGH)
-        digitalWrite(_relayPin, HIGH);
-        Serial.println(F("[ACTUATOR] >>> MATIKAN MESIN: RELAY MENJADI OFF (LAMPU RELAY MATI) <<<"));
+        // MATIKAN MESIN: aktifkan koil sehingga kontak NC terputus.
+        digitalWrite(_relayPin, RELAY_LEVEL_ENGINE_CUTOFF);
+        Serial.println(F("[ACTUATOR] >>> MATIKAN MESIN: D0 LOW, KOIL RELAY AKTIF, NC TERPUTUS <<<"));
     } else {
-        // RESTORE / HIDUPKAN MESIN: Aktifkan koil relay (Relay ON / Pin LOW)
-        digitalWrite(_relayPin, LOW);
-        Serial.println(F("[ACTUATOR] >>> RESTORE MESIN: RELAY MENJADI ON (LAMPU RELAY NYALA) <<<"));
+        // RESTORE: matikan koil sehingga COM-NC tersambung secara mekanis.
+        digitalWrite(_relayPin, RELAY_LEVEL_ENGINE_NORMAL);
+        Serial.println(F("[ACTUATOR] >>> RESTORE MESIN: D0 HIGH, KOIL RELAY MATI, NC TERSAMBUNG <<<"));
     }
+    if (changed) _saveEngineLockState();
+}
+
+void ActuatorManager::_saveEngineLockState() {
+    // Ditulis hanya ketika state berubah, bukan di setiap loop, agar flash awet.
+    EEPROM.begin(64);
+    EEPROM.write(32, 0xC7);
+    EEPROM.write(33, _isEngineLocked ? 1 : 0);
+    EEPROM.commit();
+    EEPROM.end();
 }
 
 bool ActuatorManager::isEngineLocked() const {
     return _isEngineLocked;
+}
+
+uint8_t ActuatorManager::getRelayOutputLevel() const {
+    return digitalRead(_relayPin);
 }
 
 void ActuatorManager::_setBuzzerHardware(bool state) {

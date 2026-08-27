@@ -23,8 +23,8 @@ graph TD
         SW[Sensor Getar SW-420] -->|GPIO13 Interrupt| ESP
         GPS -->|D5/D6 SoftwareSerial| ESP
         GSM -->|D1/D2 SoftwareSerial| ESP
-        ESP -->|GPIO0 D3 Active LOW| RELAY
-        ESP -->|GPIO16 D0| BUZZER
+        ESP -->|GPIO16 D0 Active LOW / NC fail-safe| RELAY
+        ESP -->|GPIO15 D8 via 2N2222 + pull-down 10k| BUZZER
     end
 
     subgraph "Konektivitas & Komunikasi"
@@ -98,7 +98,7 @@ sequenceDiagram
     
     Owner->>GSM: Balas SMS: "#MATIKAN"
     GSM->>ESP: +CMT: "#MATIKAN"
-    ESP->>Act: Aktifkan Relay D3 (Putus Pengapian CDI)
+    ESP->>Act: D0 LOW, aktifkan relay dan buka kontak NC (Putus Pengapian CDI)
     Act-->>ESP: Mesin Terkunci (Cut-Off)
     ESP->>GSM: Kirim Balasan SMS: "Mesin telah diputus."
     GSM->>Owner: SMS Konfirmasi Diterima

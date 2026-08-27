@@ -135,9 +135,9 @@ class TelemetryViewer {
 
             if (btnEngine) {
                 btnEngine.dataset.locked = isLocked ? 'true' : 'false';
-                btnEngine.innerHTML = isLocked ? 
-                    '<i class="fa-solid fa-key"></i> PULIHKAN MESIN' : 
-                    '<i class="fa-solid fa-ban"></i> MATIKAN MESIN';
+                btnEngine.innerHTML = isLocked ?
+                    '<i class="fa-solid fa-ban"></i> MATIKAN MESIN' :
+                    '<i class="fa-solid fa-key"></i> PULIHKAN MESIN';
                 btnEngine.className = isLocked ? 'btn-engine-toggle unlocked-state' : 'btn-engine-toggle';
             }
 

@@ -12,9 +12,9 @@
 | D1          | GPIO 5       | GSM SIM800L (TXD)   | SoftwareSerial RX (Terima)|
 | D2          | GPIO 4       | GSM SIM800L (RXD)   | SoftwareSerial TX (Kirim) |
 | D7          | GPIO 13      | Sensor SW-420 (DO)  | Digital Input (Interrupt) |
-| D3          | GPIO 0       | Relay 2-CH (IN1)    | Active LOW (CH1: Engine Cut-Off)|
+| D0          | GPIO 16      | Relay 2-CH (IN1)    | Active LOW, COM-NC Fail-Safe    |
 | D4          | GPIO 2       | Relay 2-CH (IN2)    | Active LOW (CH2: Cadangan/Aux)  |
-| D0          | GPIO 16      | Buzzer Alarm (SIG)  | Digital Output (Driver)   |
+| D8          | GPIO 15      | Buzzer Alarm (SIG)  | Driver 2N2222 + Pull-down 10k   |
 | A0          | ADC0         | Resistor Divider Aki| Analog In (Tegangan 0-3.3V)|
 | 3V3         | Power 3.3V   | VCC GPS & SW-420    | Output Tegangan 3.3 Volt  |
 | VIN         | Power 5V     | Input DC 5V         | Dari Stepdown LM2596 (5V) |
@@ -47,7 +47,8 @@ C. SENSOR GETAR SW-420 (VIBRATION SENSOR)
 D. MODUL RELAY 2-CHANNEL (PEMUTUS PENGAPIAN & FITUR CADANGAN)
    - VCC   ---> Pin VIN (5V) NodeMCU
    - GND   ---> Pin GND NodeMCU
-   - IN1   ---> Pin D3 (GPIO0) NodeMCU   [Active LOW: Kontrol Channel 1 - Engine Cut-Off]
+   - IN1   ---> Pin D0 (GPIO16) NodeMCU  [Active LOW: Kontrol Channel 1 - Engine Cut-Off]
+   - Pasang resistor pull-up 10k antara IN1/D0 dan 3V3 agar relay tetap OFF saat reset.
    - IN2   ---> Pin D4 (GPIO2) NodeMCU   [Active LOW: Kontrol Channel 2 - Cadangan/Klakson/Starter]
    - JUMPER KUNING (JD-VCC & VCC): Biarkan tetap terpasang menghubungkan JD-VCC dan VCC.
 
@@ -56,10 +57,14 @@ D. MODUL RELAY 2-CHANNEL (PEMUTUS PENGAPIAN & FITUR CADANGAN)
    - NC1   ---> Kabel Pengapian Menuju Koil (Default Terhubung saat Aman)
    *(Channel 2 COM2 & NO2/NC2 dapat digunakan untuk klakson/lampu/starter opsional)*
 
-E. MODUL BUZZER ALARM (SIRENE & LOCATOR)
-   - VCC   ---> Pin VIN (5V) NodeMCU
-   - GND   ---> Pin GND NodeMCU
-   - SIG   ---> Pin D0 (GPIO16) NodeMCU  [Melalui driver transistor 2N2222]
+E. BUZZER ALARM 2-KAKI (SIRENE DARURAT & LOCATOR)
+   - Wajib menggunakan transistor driver:
+     * Kaki Positif (+) Buzzer [Kaki Panjang] ---> Pin VIN (5V) NodeMCU
+     * Kaki Negatif (-) Buzzer [Kaki Pendek]  ---> Pin Kolektor (C) Transistor NPN (2N2222/BC547/S8050)
+     * Pin Basis (B) Transistor ---> Resistor 1k Ohm ---> Pin D8 (GPIO15) NodeMCU
+     * Pin Basis (B) Transistor ---> Resistor 10k Ohm ---> GND (WAJIB untuk boot)
+     * Pin Emitor (E) Transistor ---> Pin GND NodeMCU
+   - Jangan hubungkan buzzer langsung ke D8. GPIO15 wajib tetap LOW saat boot.
 
 F. RANGKAIAN MONITORING TEGANGAN AKI MOTOR (VOLTAGE DIVIDER RESISTOR)
    - Aki Motor 12V (+) ---> Resistor R1 (100k Ohm) ---> Titik Tengah Pin A0
@@ -90,7 +95,9 @@ Aki Motor (12V)
    pada kisaran 4.0V dan elco terpasang dengan baik.
 
 3. LOGIKA RELAY (ACTIVE LOW):
-   Pin D3 pada NodeMCU berlogika LOW saat memutus mesin dan HIGH saat kendaraan
-   dalam keadaan normal siap dikendarai.
+   Pin D0 berlogika LOW untuk mengaktifkan koil dan membuka kontak COM-NC
+   (mesin cut-off). D0 HIGH atau ESP mati membuat koil mati dan COM-NC kembali
+   tersambung sehingga kendaraan berada pada kondisi normal fail-safe.
+   Terminal motor WAJIB menggunakan COM1 dan NC1, bukan COM1 dan NO1.
 
 ================================================================================

@@ -35,8 +35,20 @@
         "armed": true,
         "alarm_active": false,
         "engine_locked": false,
+        "relay_output_level": "HIGH",
+        "relay_pin": "D0/GPIO16",
+        "sim800_ready": false,
+        "sim_registered": false,
+        "sms_last_success": false,
+        "sms_last_type": "NONE",
+        "sms_attempt_counter": 0,
         "theft_alert": false,
         "geofence_breach": false,
+        "geofence_active": true,
+        "geofence_radius_current": 20,
+        "auto_cutoff_active": true,
+        "anchor_lat_current": -6.2088,
+        "anchor_lng_current": 106.8456,
         "last_alarm_reason": "NONE"
       },
       "controls": {
@@ -46,6 +58,12 @@
         "find_vehicle": false,
         "emergency_sms_request": false,
         "reset_alarm": false,
+        "geofence_radius": 20,
+        "geofence_enabled": true,
+        "auto_cutoff_geofence": false,
+        "last_command_key": "",
+        "anchor_lat": -6.2088,
+        "anchor_lng": 106.8456,
         "last_command_time": 1786783990
       },
       "geofence": {

@@ -1,5 +1,5 @@
 # Native Windows PowerShell HTTP Server for IoT Dashboard
-$port = 3000
+$port = 3002
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$port/")
 $listener.Prefixes.Add("http://127.0.0.1:$port/")
@@ -7,7 +7,7 @@ $listener.Prefixes.Add("http://127.0.0.1:$port/")
 try {
     $listener.Start()
 } catch {
-    $port = 3001
+    $port = 3003
     $listener = New-Object System.Net.HttpListener
     $listener.Prefixes.Add("http://localhost:$port/")
     $listener.Prefixes.Add("http://127.0.0.1:$port/")

@@ -138,12 +138,8 @@ class App {
         // Tombol Geofence Toggle
         const btnToggleGeofence = document.getElementById('btnToggleGeofence');
         if (btnToggleGeofence) {
-            let geofenceActive = true;
             btnToggleGeofence.addEventListener('click', () => {
-                geofenceActive = !geofenceActive;
-                this.mapController.toggleGeofence(geofenceActive);
-                btnToggleGeofence.classList.toggle('active', geofenceActive);
-                this.controls._showToast(geofenceActive ? 'Geofence ditampilkan' : 'Geofence disembunyikan', 'info');
+                this.controls.setGeofenceEnabled(!this.controls.geofenceEnabled);
             });
         }
 
@@ -213,7 +209,13 @@ class App {
                         }
                     }
 
-                    if (data && data.latitude && data.longitude) {
+                    if (data && data.gps_fixed === false) {
+                        this.mapController.setGpsFixAvailable(false);
+                        return;
+                    }
+
+                    if (data && this.controls._isValidCoordinate(data.latitude, data.longitude)) {
+                        this.mapController.setGpsFixAvailable(true);
                         this.telemetry = data;
                         
                         // Perbarui Peta & Speedometer dengan data real
@@ -238,9 +240,73 @@ class App {
                     if (statusData) {
                         this.status = statusData;
                         this.telemetryViewer.updateHeaderBadges(this.telemetry, statusData);
+                        this.controls.handleSmsStatus(statusData);
+
+                        const simStatusEl = document.getElementById('sim800Status');
+                        if (simStatusEl) {
+                            const ready = statusData.sim800_ready === true;
+                            const registered = statusData.sim_registered === true;
+                            simStatusEl.textContent = ready && registered ?
+                                'SIM800L: SIAP • Terdaftar di jaringan • SMS aktif' :
+                                ready ? 'SIM800L: modul aktif, belum terdaftar di jaringan' :
+                                    'SIM800L: belum siap / firmware status lama';
+                            simStatusEl.style.color = ready && registered ?
+                                'var(--accent-green)' : 'var(--accent-amber)';
+                        }
+
+                        const alarmReasonEl = document.getElementById('modalAlarmReason');
+                        if (alarmReasonEl && statusData.last_alarm_reason) {
+                            const reasonLabels = {
+                                GEOFENCE_BREACH: 'Motor keluar dari batas geofence yang ditetapkan.',
+                                VIBRATION_THEFT_DETECTED: 'Sensor getar mendeteksi gerakan paksa saat sistem ARMED.',
+                                WEB_DASHBOARD_PANIC_BUTTON: 'Alarm panic diaktifkan dari dashboard.'
+                            };
+                            alarmReasonEl.textContent = reasonLabels[statusData.last_alarm_reason] ||
+                                `Alarm aktif: ${statusData.last_alarm_reason}`;
+                        }
+
+                        const relayStateEl = document.getElementById('engineRelayState');
+                        if (relayStateEl) {
+                            const level = statusData.relay_output_level ||
+                                (statusData.engine_locked ? 'LOW' : 'HIGH');
+                            relayStateEl.textContent = `Relay D0 • Output ${level}`;
+                        }
                         
                         if (statusData.theft_alert || statusData.alarm_active) {
-                            this.controls.triggerPanicAlarm();
+                            this.controls.triggerPanicAlarm(false);
+                        } else {
+                            this.controls.alarmUiActive = false;
+                            this.controls.stopBrowserSiren();
+                        }
+
+                        // Sinkronisasi status geofence dari ESP8266 (konfirmasi dua arah)
+                        if (statusData.geofence_active !== undefined) {
+                            if (Boolean(statusData.geofence_active) !== this.controls.geofenceEnabled) {
+                                this.controls.setGeofenceEnabled(statusData.geofence_active, false);
+                            }
+                            const syncEl = document.getElementById('geofenceSyncStatus');
+                            if (syncEl) {
+                                syncEl.innerHTML = statusData.geofence_active ?
+                                    '<i class="fa-solid fa-circle-check" style="color: var(--accent-green);"></i> ESP8266 Tersinkronisasi' :
+                                    '<i class="fa-solid fa-circle-xmark" style="color: var(--accent-red);"></i> Geofence Nonaktif di ESP8266';
+                            }
+                        }
+                        if (statusData.auto_cutoff_active !== undefined) {
+                            const chk = document.getElementById('chkAutoCutoffGeofence');
+                            if (chk && this.controls) {
+                                this.controls.autoCutoffGeofence = statusData.auto_cutoff_active;
+                                chk.checked = Boolean(statusData.auto_cutoff_active);
+                            }
+                        }
+                        if (statusData.geofence_radius_current !== undefined &&
+                            Number(statusData.geofence_radius_current) !== this.controls.geofenceRadius) {
+                            this.controls.setGeofenceRadius(statusData.geofence_radius_current, false);
+                        }
+                        if (this.controls._isValidCoordinate(statusData.anchor_lat_current, statusData.anchor_lng_current)) {
+                            this.controls.anchorLat = Number(statusData.anchor_lat_current);
+                            this.controls.anchorLng = Number(statusData.anchor_lng_current);
+                            this.mapController.setGeofence(this.controls.anchorLat, this.controls.anchorLng, this.controls.geofenceRadius);
+                            this.controls.updateLiveDistance(this.mapController.lastLat, this.mapController.lastLng);
                         }
                     }
                 });
@@ -253,7 +319,7 @@ class App {
                             this.controls.setGeofenceRadius(ctrlData.geofence_radius, false);
                         }
                         if (ctrlData.geofence_enabled !== undefined && ctrlData.geofence_enabled !== this.controls.geofenceEnabled) {
-                            this.controls.setGeofenceEnabled(ctrlData.geofence_enabled);
+                            this.controls.setGeofenceEnabled(ctrlData.geofence_enabled, false);
                         }
                         if (ctrlData.anchor_lat && ctrlData.anchor_lng) {
                             this.controls.anchorLat = ctrlData.anchor_lat;

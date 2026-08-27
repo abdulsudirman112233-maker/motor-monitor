@@ -233,22 +233,14 @@ class MapController {
 
     _reverseGeocode(lat, lng) {
         const now = Date.now();
-        if (this._lastGeocodeTime && now - this._lastGeocodeTime < 8000) return;
+        if (this._lastGeocodeTime && now - this._lastGeocodeTime < 5000) return;
         this._lastGeocodeTime = now;
 
         const addressEl = document.getElementById('addressDisplay');
         if (!addressEl) return;
 
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.display_name) {
-                    addressEl.innerHTML = `<i class="fa-solid fa-location-dot" style="color: var(--accent-green);"></i> <span>${data.display_name}</span>`;
-                    addressEl.title = data.display_name;
-                }
-            })
-            .catch(() => {
-                addressEl.innerHTML = `<i class="fa-solid fa-location-dot" style="color: var(--primary);"></i> <span>Titik Koordinat: ${lat.toFixed(6)}, ${lng.toFixed(6)}</span>`;
-            });
+        const gmapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+        addressEl.innerHTML = `<i class="fa-solid fa-location-dot" style="color: var(--accent-green);"></i> <span>Koordinat Google Maps: <a href="${gmapsUrl}" target="_blank" style="color: var(--primary); text-decoration: underline; font-weight: 600;">${lat.toFixed(6)}, ${lng.toFixed(6)} (Buka di Maps)</a></span>`;
+        addressEl.title = `Koordinat Presisi Google Maps: ${lat}, ${lng}`;
     }
 }

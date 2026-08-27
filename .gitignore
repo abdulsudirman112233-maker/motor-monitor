@@ -1,5 +1,6 @@
 # Node & Web
 node_modules/
+KONFIGURASI_FIRMWARE_DAN_API.txt
 npm-debug.log
 .DS_Store
 Thumbs.db

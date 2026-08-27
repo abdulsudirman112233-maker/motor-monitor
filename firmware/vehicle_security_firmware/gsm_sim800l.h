@@ -3,6 +3,9 @@
 
 #include <Arduino.h>
 #include <SoftwareSerial.h>
+#define TINY_GSM_MODEM_SIM800
+#define TINY_GSM_RX_BUFFER 256
+#include <TinyGsmClient.h>
 #include "config.h"
 
 struct GSMStatus {
@@ -29,9 +32,12 @@ public:
     bool begin(uint32_t baudRate = GSM_BAUD_RATE);
     void update();
     
-    bool sendSMS(const String &phoneNumber, const String &messageText);
+    bool sendSMS(const String &phoneNumber, const String &messageText, const String &messageType = "GENERAL");
     bool checkSignalQuality();
     GSMStatus getStatus() const;
+    bool wasLastSmsSuccessful() const;
+    String getLastSmsType() const;
+    uint32_t getSmsAttemptCounter() const;
     
     // Incoming SMS Callback
     bool hasIncomingSMS() const;
@@ -50,13 +56,19 @@ public:
 
 private:
     SoftwareSerial _gsmSerial;
+    TinyGsm _modem;
     GSMStatus _status;
     SMSMessage _latestSMS;
     bool _hasNewSMS;
     uint32_t _lastCSQCheck;
+    uint32_t _lastRegistrationCheck;
+    bool _lastSmsSuccess;
+    String _lastSmsType;
+    uint32_t _smsAttemptCounter;
     
     void _parseIncomingStream();
     void _parseCMTLine(const String &line);
+    bool _refreshNetworkRegistration();
 };
 
 #endif // GSM_SIM800L_H
